@@ -15,6 +15,7 @@ class Robot:
         self.y = None
         self.facing = None
         self.history = [] # (x, y, facing)
+        self.move_count = 0
     
     def is_placed(self):
         """Check if the robot has been placed on the table."""
@@ -48,6 +49,7 @@ class Robot:
 
             self.x = new_x
             self.y = new_y
+            self.move_count += 1
             return True
         
         return False
@@ -90,6 +92,7 @@ class Robot:
             self.history.append((self.x, self.y, self.facing))
             self.x = new_x
             self.y = new_y
+            self.move_count += 1
             return True
         
         return False    
