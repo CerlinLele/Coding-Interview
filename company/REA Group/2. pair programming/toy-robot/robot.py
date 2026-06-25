@@ -65,6 +65,22 @@ class Robot:
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
         return True
+
+    def backward(self):
+        """Move the robot one unit backward in the direction it's facing."""
+        if not self.is_placed():
+            return False
+        
+        dx, dy = self.DIRECTION_DELTAS[self.facing]
+        new_x = self.x - dx
+        new_y = self.y - dy
+        
+        if self.table.is_valid_position(new_x, new_y):
+            self.x = new_x
+            self.y = new_y
+            return True
+        
+        return False    
     
     def report(self):
         """Return the current position and facing direction."""
@@ -106,5 +122,8 @@ class Robot:
         
         elif command == 'REPORT':
             return self.report()
+
+        elif command == 'BACKWARD':
+            self.backward()
         
         return None

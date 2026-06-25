@@ -8,7 +8,7 @@ def main():
     robot = Robot(table)
     
     print("Toy Robot Simulator")
-    print("Commands: PLACE X,Y,FACING | MOVE | LEFT | RIGHT | REPORT | EXIT")
+    print("Commands: PLACE X,Y,FACING | MOVE | BACKWARD | LEFT | RIGHT | REPORT | EXIT")
     print()
     
     while True:
