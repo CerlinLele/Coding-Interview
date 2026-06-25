@@ -183,15 +183,38 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 
 **(A) Boolean only**: `move()` returns `True` or `False`
 - Caller: `if robot.move(): print("moved") else: print("blocked")`
+- ✅ Pro: Simple, clean API
+- ✅ Pro: No extra information overhead
+- ❌ Con: Caller doesn't know why it failed (collision vs boundary)
+- ❌ Con: Hard to debug
+- ❌ Con: Can't handle collision logic differently from boundary failures
 
 **(B) Dict with details**: `move()` returns `{"success": bool, "reason": str, "collision_with": uuid or None, "position": (x, y)}`
 - Caller: `result = robot.move(); if not result["success"] and result["reason"] == "collision": handle_collision(result["collision_with"])`
+- ✅ Pro: Rich information for debugging
+- ✅ Pro: Caller can distinguish collision vs boundary vs obstacle
+- ✅ Pro: Easy to extend with more fields later
+- ✅ Pro: Pragmatic, not over-engineered
+- ❌ Con: Slightly more complex than boolean
+- ❌ Con: Requires dict unpacking by caller
 
 **(C) Exception**: `move()` raises `CollisionException(robot_id, position)` on failure
 - Caller: `try: robot.move() except CollisionException as e: handle_collision(e.robot_id)`
+- ✅ Pro: Separates success path from error path
+- ✅ Pro: Can have different exception types (CollisionException, BoundaryException, etc.)
+- ✅ Pro: Pythonic error handling
+- ❌ Con: Exceptions should be truly exceptional; move failure might be common
+- ❌ Con: Performance overhead (exception handling is slower)
+- ❌ Con: Control flow harder to follow
 
 **(D) Callback/Event**: `move()` returns boolean, but triggers `on_collision(robot_a, robot_b)` event
 - Caller: `robot.on_collision += my_handler; robot.move()`
+- ✅ Pro: Decouples collision handling from move()
+- ✅ Pro: Multiple listeners can react to collision
+- ✅ Pro: Good for event-driven architecture
+- ❌ Con: Over-engineered for this scope
+- ❌ Con: Harder to debug (unclear flow)
+- ❌ Con: Requires observer pattern setup
 
 **Your Answer**: B ✅
 
@@ -217,3 +240,64 @@ Your note about production needs is spot-on. If you later want to add event list
 ```
 
 **Decision confirmed**: Return dict with details from move(). Simple, informative, extensible.
+
+---
+
+## Question 3.1: Creating Multiple Robots
+
+**Problem**: How do we create and register multiple robots on the same table?
+
+**Context**: We've decided on:
+- UUID for robot identification (generated when robot is created)
+- Hybrid storage (dict + 2D grid) in Table
+- Robot.move() will return a dict with results
+
+Now, how should users actually create robots?
+
+**Example scenario**: User wants to create 3 robots on a 5×5 table.
+
+**Options**:
+
+**(A) Direct instantiation**:
+```python
+table = Table(5, 5)
+robot1 = Robot(table)
+robot2 = Robot(table)
+robot3 = Robot(table)
+
+robot1.place(0, 0, 'NORTH')
+robot2.place(2, 2, 'EAST')
+robot3.place(3, 4, 'SOUTH')
+```
+
+**(B) Table factory method**:
+```python
+table = Table(5, 5)
+robot1_id = table.create_robot(0, 0, 'NORTH')
+robot2_id = table.create_robot(2, 2, 'EAST')
+robot3_id = table.create_robot(3, 4, 'SOUTH')
+
+robot1 = table.get_robot(robot1_id)  # Get reference if needed
+```
+
+**(C) Two-step: create then register**:
+```python
+table = Table(5, 5)
+robot1 = Robot(table)
+robot2 = Robot(table)
+
+table.register_robot(robot1, 0, 0, 'NORTH')
+table.register_robot(robot2, 2, 2, 'EAST')
+```
+
+**(D) Manager/Orchestrator pattern**:
+```python
+table = Table(5, 5)
+manager = RobotManager(table)
+robot1 = manager.create_robot(0, 0, 'NORTH')
+robot2 = manager.create_robot(2, 2, 'EAST')
+```
+
+**Your Answer**: 
+
+**Rationale**:
