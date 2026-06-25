@@ -35,6 +35,7 @@ class Robot:
     
     def move(self):
         """Move the robot one unit forward in the direction it's facing."""
+
         if not self.is_placed():
             return False
         
@@ -43,6 +44,8 @@ class Robot:
         new_y = self.y + dy
         
         if self.table.is_valid_position(new_x, new_y):
+            self.history.append((self.x, self.y, self.facing)) 
+
             self.x = new_x
             self.y = new_y
             return True
@@ -51,8 +54,11 @@ class Robot:
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
+        
         if not self.is_placed():
             return False
+
+        self.history.append((self.x, self.y, self.facing))
         
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index - 1) % 4]
@@ -60,8 +66,11 @@ class Robot:
     
     def right(self):
         """Rotate the robot 90 degrees to the right."""
+
         if not self.is_placed():
             return False
+
+        self.history.append((self.x, self.y, self.facing))
         
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
@@ -69,6 +78,7 @@ class Robot:
 
     def backward(self):
         """Move the robot one unit backward in the direction it's facing."""
+
         if not self.is_placed():
             return False
         
@@ -77,6 +87,7 @@ class Robot:
         new_y = self.y - dy
         
         if self.table.is_valid_position(new_x, new_y):
+            self.history.append((self.x, self.y, self.facing))
             self.x = new_x
             self.y = new_y
             return True
@@ -100,10 +111,6 @@ class Robot:
     
     def execute(self, command):
         """Execute a command string."""
-
-        if command in ['MOVE', 'LEFT', 'RIGHT', 'BACKWARD']:
-            # Save state before command execution
-            self.history.append((self.x, self.y, self.facing))
 
         command = command.strip().upper()
         
