@@ -11,7 +11,8 @@ class TestTable:
         assert table.is_valid_position(2, 3) == True
     
     def test_invalid_position(self):
-        table = Table(5, 5)
+        obstacles = [(1, 3), (2, 3), (3, 3)]
+        table = Table(5, 5, obstacles)
         assert table.is_valid_position(-1, 0) == False
         assert table.is_valid_position(0, -1) == False
         assert table.is_valid_position(5, 0) == False

@@ -4,11 +4,12 @@ from table import Table
 
 def main():
     """Simple interactive demo of the toy robot."""
+    
     table = Table(5, 5)
     robot = Robot(table)
     
     print("Toy Robot Simulator")
-    print("Commands: PLACE X,Y,FACING | MOVE | BACKWARD | LEFT | RIGHT | REPORT | EXIT")
+    print("Commands: PLACE X,Y,FACING | MOVE | BACKWARD | LEFT | RIGHT | REPORT | UNDO | EXIT")
     print()
     
     while True:
