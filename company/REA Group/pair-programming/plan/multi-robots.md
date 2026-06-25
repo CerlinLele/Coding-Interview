@@ -421,6 +421,7 @@ def move(self):
         return {"success": True, ...}
     return {"success": False, ...}
 ```
+
 - ✅ Pro: Clear responsibility split (Robot moves, Table tracks)
 - ✅ Pro: Single Responsibility Principle — Table owns its data structures
 - ✅ Pro: Easy to test/mock table updates
@@ -440,6 +441,7 @@ def move(self):
         return {"success": True, ...}
     return {"success": False, ...}
 ```
+
 - ✅ Pro: Direct, no extra method call
 - ❌ Con: Robot violates Table's encapsulation (directly accesses internal grid)
 - ❌ Con: Robot needs to know about hybrid storage implementation
@@ -456,6 +458,7 @@ def move(self):
         return {"success": True, ...}
     return {"success": False, ...}
 ```
+
 - ✅ Pro: Implicit update (no extra call)
 - ✅ Pro: Table takes full responsibility
 - ❌ Con: Hidden side effect (is_valid_position() does more than validate)
@@ -470,6 +473,7 @@ result = robot.move()
 if result["success"]:
     table.update_robot_position(robot.robot_id, result["position"])
 ```
+
 - ✅ Pro: Complete separation of concerns
 - ❌ Con: Caller must remember to call update (easy to forget)
 - ❌ Con: Move is not atomic (validation ≠ update)
@@ -484,12 +488,14 @@ if result["success"]:
 Excellent! You're really internalizing the Single Responsibility Principle. Option A is the right choice.
 
 **Why A is correct**:
+
 - Table owns the data structures (robots_dict, robots_grid)
 - Table should own the logic to keep them synchronized
 - Robot should only care about its own state (x, y, facing, history)
 - This creates a clean contract: Robot.move() → Table.update_robot_position()
 
 **What happens in the implementation**:
+
 ```python
 # In Robot
 def move(self):
@@ -518,3 +524,95 @@ def update_robot_position(self, old_pos, new_pos, robot_uuid):
 ```
 
 **Decision confirmed**: Robot calls table.update_robot_position() after successful move. Table owns its data.
+
+---
+
+## Question 4.1: UNDO Scope
+
+**Problem**: In the original single-robot Toy Robot, `UNDO` reverses the last command on that robot. In a multi-robot system, what should `UNDO` do?
+
+**Context**: You have 3 robots executing commands:
+
+```
+Robot A: PLACE(0,0,N) → MOVE → MOVE
+Robot B: PLACE(2,2,E) → MOVE
+Robot A: LEFT
+Robot B: MOVE
+```
+
+Now if we call UNDO, what happens?
+
+**Options**:
+
+**(A) Per-robot UNDO**: Each robot has its own undo history
+
+```python
+robot_a.undo()  # Reverses Robot A's last command (LEFT)
+robot_b.undo()  # Reverses Robot B's last command (MOVE)
+```
+
+**(B) Global UNDO**: Table maintains a global command history
+
+```python
+table.undo()  # Reverses the LAST command across ALL robots (Robot B's MOVE)
+table.undo()  # Reverses the SECOND-to-last command (Robot A's LEFT)
+```
+
+**(C) Both**: Support both per-robot and global UNDO
+
+```python
+robot_a.undo()      # Per-robot: undo Robot A's last move
+table.undo()        # Global: undo the last command in the system
+```
+
+**Your Answer**: C ✅
+
+**Rationale**: Both robot and table need to update the history
+
+**Clarification on the 3 options** (answering your question):
+To undo **both Robot A and Robot B** commands, you need **multiple calls** regardless:
+
+```
+Commands: Robot A MOVE → Robot B MOVE → Robot A LEFT
+
+(A) Per-robot:
+  robot_a.undo()  # Undo A's LEFT
+  robot_b.undo()  # Undo B's MOVE
+  # 2 calls
+
+(B) Global:
+  table.undo()  # Undo LEFT (cmd 3)
+  table.undo()  # Undo MOVE (cmd 2)
+  # 2 calls
+
+(C) Both:
+  # You can choose either approach above
+  # Still 2 calls needed
+```
+
+**Interviewer Feedback**:
+Excellent choice! Option C is pragmatic. Here's why:
+
+**Per-robot UNDO (A)** is intuitive for users who think "I want to undo what Robot A did"
+**Global UNDO (B)** is intuitive for users who think "I want to undo the last thing that happened"
+
+Option C gives both! The cost is minimal — just maintain both history structures.
+
+**Design for Option C**:
+```python
+# Each Robot has its own history
+robot.history = [(x, y, facing), ...]
+
+# Table maintains global command timeline
+table.command_history = [
+  {"robot_id": uuid_a, "command": "MOVE", "timestamp": 1},
+  {"robot_id": uuid_b, "command": "MOVE", "timestamp": 2},
+  {"robot_id": uuid_a, "command": "LEFT", "timestamp": 3},
+]
+
+# Then support both:
+robot.undo()   # Uses robot.history
+table.undo()   # Uses table.command_history
+```
+
+**Decision confirmed**: Support both per-robot and global UNDO (Option C). Flexible and user-friendly.
