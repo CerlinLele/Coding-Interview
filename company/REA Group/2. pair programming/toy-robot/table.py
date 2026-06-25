@@ -4,10 +4,10 @@ class Table:
     def __init__(self, width, height, obstacles=None):
         self.width = width
         self.height = height
-        if obstacles is None:
-            obstacles = []
-        else:
-            self.obstacles = [[0 for _ in range(width)] for _ in range(height)]
+        # 始终初始化障碍物网格
+        self.obstacles = [[0 for _ in range(width)] for _ in range(height)]
+        # 如果提供了障碍物列表，标记它们
+        if obstacles is not None:
             for obstacle in obstacles:
                 self.obstacles[obstacle[0]][obstacle[1]] = 1
     

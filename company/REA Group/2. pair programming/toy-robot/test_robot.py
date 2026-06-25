@@ -17,6 +17,9 @@ class TestTable:
         assert table.is_valid_position(0, -1) == False
         assert table.is_valid_position(5, 0) == False
         assert table.is_valid_position(0, 5) == False
+        assert table.is_valid_position(1, 3) == False
+        assert table.is_valid_position(2, 3) == False
+        assert table.is_valid_position(3, 3) == False   
 
 
 class TestRobot:
