@@ -166,3 +166,54 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 **Additional note**: This also makes the code testable. You can test Robot.move() independently by mocking Table.is_valid_position(), and test Table.is_valid_position() independently.
 
 **Decision confirmed**: Check collision inside Table.is_valid_position(). Robot.move() delegates to Table.
+
+---
+
+## Question 2.2: Collision Response Format
+
+**Problem**: When collision is detected in `robot.move()`, what should we return to the caller?
+
+**Context**: The caller might want to know:
+- Did the move succeed or fail?
+- If it failed, was it because of collision or boundary?
+- If collision, which robot did we hit?
+- What position were we trying to move to?
+
+**Options**:
+
+**(A) Boolean only**: `move()` returns `True` or `False`
+- Caller: `if robot.move(): print("moved") else: print("blocked")`
+
+**(B) Dict with details**: `move()` returns `{"success": bool, "reason": str, "collision_with": uuid or None, "position": (x, y)}`
+- Caller: `result = robot.move(); if not result["success"] and result["reason"] == "collision": handle_collision(result["collision_with"])`
+
+**(C) Exception**: `move()` raises `CollisionException(robot_id, position)` on failure
+- Caller: `try: robot.move() except CollisionException as e: handle_collision(e.robot_id)`
+
+**(D) Callback/Event**: `move()` returns boolean, but triggers `on_collision(robot_a, robot_b)` event
+- Caller: `robot.on_collision += my_handler; robot.move()`
+
+**Your Answer**: B ✅
+
+**Rationale**: I want to give user better feedback but don't want to over design at the moment. In production, we may need to handle exception or callback.
+
+**Interviewer Feedback**:
+Excellent pragmatism! This is exactly the right balance. Option B gives you:
+- ✅ Rich feedback for debugging and testing
+- ✅ Easy to extend later (add more fields to the dict)
+- ✅ No early over-engineering (exception handling can come later if needed)
+- ✅ Simple to use: just check `result["success"]`
+
+Your note about production needs is spot-on. If you later want to add event listeners or exception handling, you can wrap the dict response — so B is a solid foundation.
+
+**Design note**: The dict structure will be:
+```python
+{
+    "success": bool,
+    "reason": str,  # "boundary" or "collision" or "obstacle"
+    "collision_with": uuid or None,
+    "position": (x, y)  # where we tried to move
+}
+```
+
+**Decision confirmed**: Return dict with details from move(). Simple, informative, extensible.
