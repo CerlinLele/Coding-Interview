@@ -92,3 +92,77 @@ Excellent! You nailed it. Hybrid is the right choice for most cases. And your fo
 **Decision confirmed**: Hybrid storage (dict + 2D grid) for small-to-medium tables.
 
 Also noted: You wisely added UUID generation on robot creation earlier — good thinking!
+
+---
+
+## Question 2.1: When to Detect Collision?
+
+**Problem**: At what point in `robot.move()` should we detect collision with another robot?
+
+**Scenario**: Robot A is at (1, 1) facing NORTH. Robot B is at (1, 2). Robot A executes MOVE.
+
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    # ❓ At which step do we check for collision?
+    # Option A: Check BEFORE changing state
+    # Option B: Check AFTER changing state
+    # Option C: Check inside is_valid_position()
+```
+
+**Options**:
+
+**(A) Check BEFORE state change**:
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    # Step 1: Validate new position (including collision check)
+    if not self.table.is_valid_position(new_x, new_y):
+        return False  # Collision detected, don't move
+    # Step 2: If valid, update state
+    self.x, self.y = new_x, new_y
+    return True
+```
+- ✅ Pro: Atomic operation, no rollback needed, state always consistent
+- ❌ Con: None really
+
+**(B) Check AFTER state change**:
+```python
+def move(self):
+    old_x, old_y = self.x, self.y
+    # Step 1: Change state first
+    self.x, self.y = calculate_new_position()
+    # Step 2: Then check if valid
+    if not self.table.is_valid_position(self.x, self.y):
+        # Step 3: Rollback if collision
+        self.x, self.y = old_x, old_y
+        return False
+    return True
+```
+- ✅ Pro: ??? (hard to find a pro)
+- ❌ Con: Need rollback logic, risk of inconsistent state if rollback fails, more complex
+
+**(C) Check inside is_valid_position()**:
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    if self.table.is_valid_position(new_x, new_y):  # Contains collision check
+        self.x, self.y = new_x, new_y
+        return True
+    return False
+```
+- ✅ Pro: Single Responsibility — is_valid_position() handles ALL validity checks
+- ❌ Con: Same as (A), but with better encapsulation
+
+**Your Answer**: C ✅
+
+**Rationale**: Single responsibility fall on Table side.
+
+**Interviewer Feedback**:
+Perfect! You nailed it. Option C is exactly right. By putting the collision check inside `is_valid_position()`, you keep the Table responsible for determining what's "valid" on the table — that's its job. The Robot just calls `is_valid_position()` and trusts the answer.
+
+This also aligns with your earlier decision on hybrid storage — the Table has access to the 2D grid, so it can efficiently check collisions in O(1).
+
+**Additional note**: This also makes the code testable. You can test Robot.move() independently by mocking Table.is_valid_position(), and test Table.is_valid_position() independently.
+
+**Decision confirmed**: Check collision inside Table.is_valid_position(). Robot.move() delegates to Table.
