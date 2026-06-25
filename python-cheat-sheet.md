@@ -72,6 +72,37 @@ pos_list = list(positions)
 - 快速去重：`unique_states = set([(x, y, facing, count) for ... ])`
 - 避免重复：`if state not in visited: visited.add(state)`
 
+**Toy Robot 中的实际用途**（四元组作为状态）：
+```python
+# 记录所有访问过的状态（完整状态包括位置、朝向和移动次数）
+visited_states = set()
+
+# 执行命令后，记录当前状态
+def record_state(self, visited):
+    state = (self.x, self.y, self.facing, self.move_count)  # 四元组
+    visited.add(state)
+
+# 检查是否到达过这个状态
+if (current_x, current_y, current_facing, current_count) not in visited_states:
+    visited_states.add((current_x, current_y, current_facing, current_count))
+
+# 快速判断是否重复
+self.robot.execute('PLACE 0,0,NORTH')
+self.robot.execute('MOVE')
+state1 = (self.robot.x, self.robot.y, self.robot.facing, self.robot.move_count)  # (0, 1, 'NORTH', 1)
+visited = {state1}
+
+self.robot.execute('UNDO')
+state2 = (self.robot.x, self.robot.y, self.robot.facing, self.robot.move_count)  # (0, 0, 'NORTH', 0)
+if state2 not in visited:
+    visited.add(state2)
+```
+
+**为什么用 Set 而不是 List**：
+- List 检查元素存在：`O(n)` 时间
+- Set 检查元素存在：`O(1)` 时间
+- 如果要记录 100+ 个状态，Set 性能远优于 List
+
 ---
 
 ## 字典（常用于方向映射）
