@@ -77,6 +77,7 @@ When robot is created. Because I want my uuid to mark the life of a robot.
 **Rationale**: O(1) for both robot -> position and position -> robot
 
 **Follow-up**: How would your choice scale if the table is 1,000,000 × 1,000,000 but only 10 robots exist?
+
 - Your answer: In that case, maybe we don't need 2D grid.
 
 **Interviewer Feedback**:
@@ -85,6 +86,7 @@ Excellent! You nailed it. Hybrid is the right choice for most cases. And your fo
 **Key insight you discovered**: For a 1M×1M table with only 10 robots, a 2D array wastes **1 trillion cells** of memory. In this case, you'd want to use a **dict-based position map**: `{(x, y): robot_uuid}` instead of the 2D grid.
 
 **Design decision for scaling**:
+
 - Small table (5×5 to maybe 1000×1000): Use hybrid (dict + 2D grid) — fast and simple
 - Large table (1M+) with few robots: Use dict only for position tracking — memory efficient
 - For now, let's assume we're building for small tables (5×5 to 100×100), so **Hybrid (C) is our choice**
@@ -113,6 +115,7 @@ def move(self):
 **Options**:
 
 **(A) Check BEFORE state change**:
+
 ```python
 def move(self):
     new_x, new_y = calculate_new_position()
@@ -123,10 +126,12 @@ def move(self):
     self.x, self.y = new_x, new_y
     return True
 ```
+
 - ✅ Pro: Atomic operation, no rollback needed, state always consistent
 - ❌ Con: None really
 
 **(B) Check AFTER state change**:
+
 ```python
 def move(self):
     old_x, old_y = self.x, self.y
@@ -139,10 +144,12 @@ def move(self):
         return False
     return True
 ```
+
 - ✅ Pro: ??? (hard to find a pro)
 - ❌ Con: Need rollback logic, risk of inconsistent state if rollback fails, more complex
 
 **(C) Check inside is_valid_position()**:
+
 ```python
 def move(self):
     new_x, new_y = calculate_new_position()
@@ -151,6 +158,7 @@ def move(self):
         return True
     return False
 ```
+
 - ✅ Pro: Single Responsibility — is_valid_position() handles ALL validity checks
 - ❌ Con: Same as (A), but with better encapsulation
 
@@ -174,6 +182,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 **Problem**: When collision is detected in `robot.move()`, what should we return to the caller?
 
 **Context**: The caller might want to know:
+
 - Did the move succeed or fail?
 - If it failed, was it because of collision or boundary?
 - If collision, which robot did we hit?
@@ -182,6 +191,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 **Options**:
 
 **(A) Boolean only**: `move()` returns `True` or `False`
+
 - Caller: `if robot.move(): print("moved") else: print("blocked")`
 - ✅ Pro: Simple, clean API
 - ✅ Pro: No extra information overhead
@@ -190,6 +200,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 - ❌ Con: Can't handle collision logic differently from boundary failures
 
 **(B) Dict with details**: `move()` returns `{"success": bool, "reason": str, "collision_with": uuid or None, "position": (x, y)}`
+
 - Caller: `result = robot.move(); if not result["success"] and result["reason"] == "collision": handle_collision(result["collision_with"])`
 - ✅ Pro: Rich information for debugging
 - ✅ Pro: Caller can distinguish collision vs boundary vs obstacle
@@ -199,6 +210,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 - ❌ Con: Requires dict unpacking by caller
 
 **(C) Exception**: `move()` raises `CollisionException(robot_id, position)` on failure
+
 - Caller: `try: robot.move() except CollisionException as e: handle_collision(e.robot_id)`
 - ✅ Pro: Separates success path from error path
 - ✅ Pro: Can have different exception types (CollisionException, BoundaryException, etc.)
@@ -208,6 +220,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 - ❌ Con: Control flow harder to follow
 
 **(D) Callback/Event**: `move()` returns boolean, but triggers `on_collision(robot_a, robot_b)` event
+
 - Caller: `robot.on_collision += my_handler; robot.move()`
 - ✅ Pro: Decouples collision handling from move()
 - ✅ Pro: Multiple listeners can react to collision
@@ -222,6 +235,7 @@ This also aligns with your earlier decision on hybrid storage — the Table has 
 
 **Interviewer Feedback**:
 Excellent pragmatism! This is exactly the right balance. Option B gives you:
+
 - ✅ Rich feedback for debugging and testing
 - ✅ Easy to extend later (add more fields to the dict)
 - ✅ No early over-engineering (exception handling can come later if needed)
@@ -230,6 +244,7 @@ Excellent pragmatism! This is exactly the right balance. Option B gives you:
 Your note about production needs is spot-on. If you later want to add event listeners or exception handling, you can wrap the dict response — so B is a solid foundation.
 
 **Design note**: The dict structure will be:
+
 ```python
 {
     "success": bool,
@@ -248,6 +263,7 @@ Your note about production needs is spot-on. If you later want to add event list
 **Problem**: How do we create and register multiple robots on the same table?
 
 **Context**: We've decided on:
+
 - UUID for robot identification (generated when robot is created)
 - Hybrid storage (dict + 2D grid) in Table
 - Robot.move() will return a dict with results
@@ -259,6 +275,7 @@ Now, how should users actually create robots?
 **Options**:
 
 **(A) Direct instantiation**:
+
 ```python
 table = Table(5, 5)
 robot1 = Robot(table)
@@ -269,8 +286,16 @@ robot1.place(0, 0, 'NORTH')
 robot2.place(2, 2, 'EAST')
 robot3.place(3, 4, 'SOUTH')
 ```
+- ✅ Pro: Simple, no extra API layer
+- ✅ Pro: Familiar pattern (same as single-robot version)
+- ✅ Pro: Easy to understand
+- ✅ Pro: Robot object available immediately
+- ❌ Con: Robot lifecycle split (creation vs placement)
+- ❌ Con: Robot might not be on table right after instantiation
+- ❌ Con: No centralized robot management
 
 **(B) Table factory method**:
+
 ```python
 table = Table(5, 5)
 robot1_id = table.create_robot(0, 0, 'NORTH')
@@ -279,8 +304,15 @@ robot3_id = table.create_robot(3, 4, 'SOUTH')
 
 robot1 = table.get_robot(robot1_id)  # Get reference if needed
 ```
+- ✅ Pro: Atomic: robot created AND placed in one call
+- ✅ Pro: Table manages robot lifecycle
+- ✅ Pro: Easy to track all robots on table
+- ❌ Con: Returns robot_id instead of robot object (extra step to get object)
+- ❌ Con: More complex Table API
+- ❌ Con: Breaks similarity with single-robot design
 
 **(C) Two-step: create then register**:
+
 ```python
 table = Table(5, 5)
 robot1 = Robot(table)
@@ -289,15 +321,49 @@ robot2 = Robot(table)
 table.register_robot(robot1, 0, 0, 'NORTH')
 table.register_robot(robot2, 2, 2, 'EAST')
 ```
+- ✅ Pro: Clear separation of concerns
+- ✅ Pro: Robot object available immediately
+- ✅ Pro: Explicit registration to table
+- ❌ Con: Extra step
+- ❌ Con: Robot created before placed (risky intermediate state)
+- ❌ Con: More verbose
 
 **(D) Manager/Orchestrator pattern**:
+
 ```python
 table = Table(5, 5)
 manager = RobotManager(table)
 robot1 = manager.create_robot(0, 0, 'NORTH')
 robot2 = manager.create_robot(2, 2, 'EAST')
 ```
+- ✅ Pro: Centralized robot management
+- ✅ Pro: Easy to add features (logging, validation, etc.)
+- ✅ Pro: Scalable pattern
+- ❌ Con: Over-engineered for initial scope
+- ❌ Con: Extra abstraction layer
+- ❌ Con: Requires new RobotManager class
 
-**Your Answer**: 
+**Your Answer**: A ✅
 
-**Rationale**:
+**Rationale**: still don't want to over engineering.
+
+**Interviewer Feedback**:
+Perfect! Option A is the pragmatic choice. Your reasoning is spot-on — you're staying consistent with the "build incrementally, don't over-engineer" philosophy.
+
+**Why A works well here**:
+- Mirrors the original single-robot design (Robot created, then placed)
+- No extra abstraction layers
+- Easy to transition from single-robot code
+- Can always refactor to B, C, or D later if needed
+
+**Trade-off you accepted**: Robot has a split lifecycle (instantiation ≠ placement). This is fine for now because:
+1. Robot has a reference to the table
+2. Placement validates and registers with the table
+3. Clear, understandable flow
+
+**Design note for implementation**: When Robot.place() is called, it should:
+- Validate position with Table.is_valid_position()
+- Register itself with Table (add to robots_dict and robots_grid)
+- Update its internal state (x, y, facing)
+
+**Decision confirmed**: Direct instantiation + place() pattern. Keep it simple, align with original design.
