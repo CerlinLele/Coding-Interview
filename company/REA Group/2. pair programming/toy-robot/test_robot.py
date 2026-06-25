@@ -156,4 +156,30 @@ class TestRobot:
     
     def test_undo_without_placement(self):
         assert self.robot.undo() == False
+
+    def test_undo_multiple_times(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('MOVE')
+        self.robot.execute('UNDO')
+        self.robot.execute('UNDO')
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH'
+
+    def test_undo_past_history_limit(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('UNDO')
+        second_undo = self.robot.execute('UNDO')
+        assert second_undo == False
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH'
+
+    def test_undo_after_failed_move(self):
+        self.robot.execute('PLACE 0,0,SOUTH')
+        self.robot.execute('MOVE')  # fails — at boundary
+        second_undo = self.robot.execute('UNDO')
+        assert second_undo == False
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,SOUTH'
     
