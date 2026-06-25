@@ -102,7 +102,12 @@ class Robot:
         if not self.history:
             return False
         
-        self.x, self.y, self.facing = self.history.pop()
+        current_state = self.history.pop()
+        if current_state[2] == self.facing:
+            self.move_count -= 1
+
+        self.x, self.y, self.facing = current_state
+        
         return True
     
     def report(self):
@@ -110,7 +115,7 @@ class Robot:
         if not self.is_placed():
             return None
         
-        return f"{self.x},{self.y},{self.facing}"
+        return f"{self.x},{self.y},{self.facing},{self.move_count}"
     
     def execute(self, command):
         """Execute a command string."""

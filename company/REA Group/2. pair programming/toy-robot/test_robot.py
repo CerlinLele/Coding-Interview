@@ -87,7 +87,7 @@ class TestRobot:
     
     def test_report(self):
         self.robot.place(1, 2, 'EAST')
-        assert self.robot.report() == '1,2,EAST'
+        assert self.robot.report() == '1,2,EAST,0'
     
     def test_report_without_placement(self):
         assert self.robot.report() is None
@@ -103,20 +103,20 @@ class TestRobot:
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('MOVE')
         result = self.robot.execute('REPORT')
-        assert result == '0,1,NORTH'
-    
+        assert result == '0,1,NORTH,1'
+
     def test_example_a(self):
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('MOVE')
         result = self.robot.execute('REPORT')
-        assert result == '0,1,NORTH'
-    
+        assert result == '0,1,NORTH,1'
+
     def test_example_b(self):
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('LEFT')
         result = self.robot.execute('REPORT')
-        assert result == '0,0,WEST'
-    
+        assert result == '0,0,WEST,0'
+
     def test_example_c(self):
         self.robot.execute('PLACE 1,2,EAST')
         self.robot.execute('MOVE')
@@ -124,7 +124,7 @@ class TestRobot:
         self.robot.execute('LEFT')
         self.robot.execute('MOVE')
         result = self.robot.execute('REPORT')
-        assert result == '3,3,NORTH'
+        assert result == '3,3,NORTH,3'
     
     def test_commands_before_placement_ignored(self):
         self.robot.execute('MOVE')
@@ -136,23 +136,23 @@ class TestRobot:
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('BACKWARD')
         result = self.robot.execute('REPORT')
-        assert result == '0,0,NORTH'
-    
+        assert result == '0,0,NORTH,0'
+
     def test_backward_without_placement(self):
         assert self.robot.backward() == False
-    
+
     def test_backward_invalid_direction(self):
         self.robot.execute('PLACE 1,3,NORTH')
         self.robot.execute('BACKWARD')
         result = self.robot.execute('REPORT')
-        assert result == '1,2,NORTH'
-        
+        assert result == '1,2,NORTH,1'
+
     def test_undo(self):
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('MOVE')
         self.robot.execute('UNDO')
         result = self.robot.execute('REPORT')
-        assert result == '0,0,NORTH'
+        assert result == '0,0,NORTH,0'
     
     def test_undo_without_placement(self):
         assert self.robot.undo() == False
@@ -164,7 +164,7 @@ class TestRobot:
         self.robot.execute('UNDO')
         self.robot.execute('UNDO')
         result = self.robot.execute('REPORT')
-        assert result == '0,0,NORTH'
+        assert result == '0,0,NORTH,0'
 
     def test_undo_past_history_limit(self):
         self.robot.execute('PLACE 0,0,NORTH')
@@ -173,7 +173,7 @@ class TestRobot:
         second_undo = self.robot.execute('UNDO')
         assert second_undo == False
         result = self.robot.execute('REPORT')
-        assert result == '0,0,NORTH'
+        assert result == '0,0,NORTH,0'
 
     def test_undo_after_failed_move(self):
         self.robot.execute('PLACE 0,0,SOUTH')
@@ -181,5 +181,51 @@ class TestRobot:
         second_undo = self.robot.execute('UNDO')
         assert second_undo == False
         result = self.robot.execute('REPORT')
-        assert result == '0,0,SOUTH'
+        assert result == '0,0,SOUTH,0'
+
+    def test_report_includes_move_count(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH,0'
+
+    def test_move_increments_count(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('MOVE')
+        result = self.robot.execute('REPORT')
+        assert result == '0,2,NORTH,2'
+
+    def test_backward_increments_count(self):
+        self.robot.execute('PLACE 0,2,NORTH')
+        self.robot.execute('BACKWARD')
+        result = self.robot.execute('REPORT')
+        assert result == '0,1,NORTH,1'
+
+    def test_rotation_does_not_increment_count(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('LEFT')
+        self.robot.execute('RIGHT')
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH,0'
+
+    def test_undo_move_decrements_count(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('UNDO')
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH,0'
+
+    def test_undo_rotation_does_not_decrement_count(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('LEFT')
+        self.robot.execute('UNDO')  # undoes LEFT, count should stay 1
+        result = self.robot.execute('REPORT')
+        assert result == '0,1,NORTH,1'
+
+    def test_failed_move_does_not_increment_count(self):
+        self.robot.execute('PLACE 0,0,SOUTH')
+        self.robot.execute('MOVE')  # fails — at boundary
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,SOUTH,0'
     
