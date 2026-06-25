@@ -286,6 +286,7 @@ robot1.place(0, 0, 'NORTH')
 robot2.place(2, 2, 'EAST')
 robot3.place(3, 4, 'SOUTH')
 ```
+
 - ✅ Pro: Simple, no extra API layer
 - ✅ Pro: Familiar pattern (same as single-robot version)
 - ✅ Pro: Easy to understand
@@ -304,6 +305,7 @@ robot3_id = table.create_robot(3, 4, 'SOUTH')
 
 robot1 = table.get_robot(robot1_id)  # Get reference if needed
 ```
+
 - ✅ Pro: Atomic: robot created AND placed in one call
 - ✅ Pro: Table manages robot lifecycle
 - ✅ Pro: Easy to track all robots on table
@@ -321,6 +323,7 @@ robot2 = Robot(table)
 table.register_robot(robot1, 0, 0, 'NORTH')
 table.register_robot(robot2, 2, 2, 'EAST')
 ```
+
 - ✅ Pro: Clear separation of concerns
 - ✅ Pro: Robot object available immediately
 - ✅ Pro: Explicit registration to table
@@ -336,6 +339,7 @@ manager = RobotManager(table)
 robot1 = manager.create_robot(0, 0, 'NORTH')
 robot2 = manager.create_robot(2, 2, 'EAST')
 ```
+
 - ✅ Pro: Centralized robot management
 - ✅ Pro: Easy to add features (logging, validation, etc.)
 - ✅ Pro: Scalable pattern
@@ -351,19 +355,166 @@ robot2 = manager.create_robot(2, 2, 'EAST')
 Perfect! Option A is the pragmatic choice. Your reasoning is spot-on — you're staying consistent with the "build incrementally, don't over-engineer" philosophy.
 
 **Why A works well here**:
+
 - Mirrors the original single-robot design (Robot created, then placed)
 - No extra abstraction layers
 - Easy to transition from single-robot code
 - Can always refactor to B, C, or D later if needed
 
 **Trade-off you accepted**: Robot has a split lifecycle (instantiation ≠ placement). This is fine for now because:
+
 1. Robot has a reference to the table
 2. Placement validates and registers with the table
 3. Clear, understandable flow
 
 **Design note for implementation**: When Robot.place() is called, it should:
+
 - Validate position with Table.is_valid_position()
 - Register itself with Table (add to robots_dict and robots_grid)
 - Update its internal state (x, y, facing)
 
 **Decision confirmed**: Direct instantiation + place() pattern. Keep it simple, align with original design.
+
+---
+
+## Question 3.2: Table Update After Robot Move
+
+**Problem**: When a robot successfully moves from old position to new position, who is responsible for updating the Table's tracking structures (robots_dict and robots_grid)?
+
+**Context**: Recall our hybrid storage decision:
+
+- `Table.robots_dict = {uuid: robot_object}`
+- `Table.robots_grid[x][y] = uuid`
+
+When `robot.move()` succeeds, we need to:
+
+1. Update robots_grid: old position → None/0, new position → robot_uuid
+2. Keep robots_dict in sync (or is it auto-synced?)
+
+**Example**: Robot A moves from (1,1) to (2,2)
+
+```python
+# Before move
+robots_grid[1][1] = robot_a_uuid
+robots_dict[robot_a_uuid] = robot_a_object
+
+# After move succeeds, what should happen?
+# robots_grid[1][1] = ??? (set to None/0)
+# robots_grid[2][2] = ??? (set to robot_a_uuid)
+# robots_dict[robot_a_uuid] = ??? (unchanged? or updated?)
+```
+
+**Options**:
+
+**(A) Robot.move() calls table.update_robot_position(old_pos, new_pos)**:
+
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    if self.table.is_valid_position(new_x, new_y):
+        self.table.update_robot_position(
+            old_pos=(self.x, self.y),
+            new_pos=(new_x, new_y),
+            robot_id=self.robot_id
+        )
+        self.x, self.y = new_x, new_y
+        return {"success": True, ...}
+    return {"success": False, ...}
+```
+- ✅ Pro: Clear responsibility split (Robot moves, Table tracks)
+- ✅ Pro: Single Responsibility Principle — Table owns its data structures
+- ✅ Pro: Easy to test/mock table updates
+- ✅ Pro: Table stays in sync (atomic operation)
+- ❌ Con: Robot needs to know about table's update method
+
+**(B) Robot.move() updates table.robots_grid directly**:
+
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    if self.table.is_valid_position(new_x, new_y):
+        # Robot directly modifies table's internal structures
+        self.table.robots_grid[self.x][self.y] = None
+        self.table.robots_grid[new_x][new_y] = self.robot_id
+        self.x, self.y = new_x, new_y
+        return {"success": True, ...}
+    return {"success": False, ...}
+```
+- ✅ Pro: Direct, no extra method call
+- ❌ Con: Robot violates Table's encapsulation (directly accesses internal grid)
+- ❌ Con: Robot needs to know about hybrid storage implementation
+- ❌ Con: Hard to change Table's internal structure later (breaks Robot code)
+- ❌ Con: robots_dict might get out of sync
+
+**(C) Table.is_valid_position() handles updates**:
+
+```python
+def move(self):
+    new_x, new_y = calculate_new_position()
+    if self.table.is_valid_position(new_x, new_y):  # This also updates!
+        self.x, self.y = new_x, new_y
+        return {"success": True, ...}
+    return {"success": False, ...}
+```
+- ✅ Pro: Implicit update (no extra call)
+- ✅ Pro: Table takes full responsibility
+- ❌ Con: Hidden side effect (is_valid_position() does more than validate)
+- ❌ Con: Confusing behavior — validation method also mutates state
+- ❌ Con: Hard to test (can't validate without side effects)
+
+**(D) External orchestrator manages updates**:
+
+```python
+# In main.py or game loop
+result = robot.move()
+if result["success"]:
+    table.update_robot_position(robot.robot_id, result["position"])
+```
+- ✅ Pro: Complete separation of concerns
+- ❌ Con: Caller must remember to call update (easy to forget)
+- ❌ Con: Move is not atomic (validation ≠ update)
+- ❌ Con: Risk of inconsistent state if update is forgotten
+- ❌ Con: More verbose for every move
+
+**Your Answer**: A ✅
+
+**Rationale**: Not only robot need to update its position. Table also need to update the status. Single responsibility again.
+
+**Interviewer Feedback**:
+Excellent! You're really internalizing the Single Responsibility Principle. Option A is the right choice.
+
+**Why A is correct**:
+- Table owns the data structures (robots_dict, robots_grid)
+- Table should own the logic to keep them synchronized
+- Robot should only care about its own state (x, y, facing, history)
+- This creates a clean contract: Robot.move() → Table.update_robot_position()
+
+**What happens in the implementation**:
+```python
+# In Robot
+def move(self):
+    new_x, new_y = calculate_new_position()
+    result = self.table.is_valid_position(new_x, new_y)
+    if result["success"]:
+        # Call table to update tracking
+        self.table.update_robot_position(
+            old_pos=(self.x, self.y),
+            new_pos=(new_x, new_y),
+            robot_uuid=self.robot_id
+        )
+        # Update self
+        self.x, self.y = new_x, new_y
+        self.move_count += 1
+        self.history.append((old_x, old_y, self.facing))
+        return result
+    return result
+
+# In Table
+def update_robot_position(self, old_pos, new_pos, robot_uuid):
+    # Update 2D grid
+    self.robots_grid[old_pos[0]][old_pos[1]] = None
+    self.robots_grid[new_pos[0]][new_pos[1]] = robot_uuid
+    # robots_dict stays unchanged (already has the object reference)
+```
+
+**Decision confirmed**: Robot calls table.update_robot_position() after successful move. Table owns its data.
