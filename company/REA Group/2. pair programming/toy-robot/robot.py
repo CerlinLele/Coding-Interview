@@ -14,6 +14,7 @@ class Robot:
         self.x = None
         self.y = None
         self.facing = None
+        self.history = [] # (x, y, facing)
     
     def is_placed(self):
         """Check if the robot has been placed on the table."""
@@ -82,6 +83,14 @@ class Robot:
         
         return False    
     
+    def undo(self):
+        """Undo the last command."""
+        if not self.history:
+            return False
+        
+        self.x, self.y, self.facing = self.history.pop()
+        return True
+    
     def report(self):
         """Return the current position and facing direction."""
         if not self.is_placed():
@@ -91,6 +100,11 @@ class Robot:
     
     def execute(self, command):
         """Execute a command string."""
+
+        if command in ['MOVE', 'LEFT', 'RIGHT', 'BACKWARD']:
+            # Save state before command execution
+            self.history.append((self.x, self.y, self.facing))
+
         command = command.strip().upper()
         
         if command.startswith('PLACE'):
@@ -125,5 +139,8 @@ class Robot:
 
         elif command == 'BACKWARD':
             self.backward()
+        
+        elif command == 'UNDO':
+            return self.undo()
         
         return None

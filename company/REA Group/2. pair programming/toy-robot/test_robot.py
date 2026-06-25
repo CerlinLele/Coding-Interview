@@ -146,3 +146,14 @@ class TestRobot:
         self.robot.execute('BACKWARD')
         result = self.robot.execute('REPORT')
         assert result == '1,2,NORTH'
+        
+    def test_undo(self):
+        self.robot.execute('PLACE 0,0,NORTH')
+        self.robot.execute('MOVE')
+        self.robot.execute('UNDO')
+        result = self.robot.execute('REPORT')
+        assert result == '0,0,NORTH'
+    
+    def test_undo_without_placement(self):
+        assert self.robot.undo() == False
+    
