@@ -232,4 +232,22 @@ class TestRobot:
         self.robot.execute('MOVE')  # fails — at boundary
         result = self.robot.execute('REPORT')
         assert result == '0,0,SOUTH,0'
+
+    def test_move_blocked_by_obstacle(self):
+        obstacles = [(0, 1)]
+        table = Table(5, 5, obstacles)
+        robot = Robot(table)
+        robot.execute('PLACE 0,0,NORTH')
+        robot.execute('MOVE')  # blocked by obstacle at (0,1)
+        result = robot.execute('REPORT')
+        assert result == '0,0,NORTH,0'
+
+    def test_backward_blocked_by_obstacle(self):
+        obstacles = [(1, 2)]
+        table = Table(5, 5, obstacles)
+        robot = Robot(table)
+        robot.execute('PLACE 1,3,NORTH')
+        robot.execute('BACKWARD')  # blocked by obstacle at (1,2)
+        result = robot.execute('REPORT')
+        assert result == '1,3,NORTH,0'
     
