@@ -101,7 +101,9 @@ class Robot:
         if current_state[2] == self.facing:
             self.move_count -= 1
 
+        self.table.robots[self.x][self.y] = None
         self.x, self.y, self.facing = current_state
+        self.table.robots[self.x][self.y] = self
         
         return True
     

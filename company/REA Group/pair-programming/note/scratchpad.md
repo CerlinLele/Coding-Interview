@@ -49,3 +49,9 @@ the table need to update the robots grid
 1. empty the current position
 2. occupy the next position
 
+- **Undo behavior** — When a robot calls `undo()`, the position is restored from history, but the `table.robots` grid isn't updated. So if robot1 was at (0,0), moved to (0,1), then undo — the grid still thinks robot1 is at (0,1). What happens then?
+    
+    We also need to consider undo, 
+    
+    1. before: empty the current position
+    2. after: reset back to previous position
