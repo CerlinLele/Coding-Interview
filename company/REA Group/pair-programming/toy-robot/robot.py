@@ -37,8 +37,9 @@ class Robot:
         self.x = x
         self.y = y
         self.facing = facing
-        
-        self.table.robots[x][y] = self
+
+        self.table.update_robot_grid(self.id, x, y)
+        self.table.update_robot_position(self.id, (x, y, facing, self.move_count))
 
         return validation_result
     
@@ -56,17 +57,19 @@ class Robot:
         new_y = self.y + dy
 
         validation_result = self.table.is_valid_position(new_x, new_y)
-        
-        if validation_result.get("success"):
-            self.history.append((self.x, self.y, self.facing)) 
 
-            self.table.robots[self.x][self.y] = None
+        if validation_result.get("success"):
+            self.history.append((self.x, self.y, self.facing))
+
+            self.table.update_robot_grid(None, self.x, self.y)
+            self.table.update_robot_position(self.id, None)
 
             self.x = new_x
             self.y = new_y
             self.move_count += 1
 
-            self.table.robots[new_x][new_y] = self
+            self.table.update_robot_grid(self.id, new_x, new_y)
+            self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
         
         return validation_result
     
@@ -105,9 +108,13 @@ class Robot:
                 return {"success": False, "message": "No moves to undo."}
             self.move_count -= 1
 
-        self.table.robots[self.x][self.y] = None
+        self.table.update_robot_grid(None, self.x, self.y)
+        self.table.update_robot_position(self.id, None)
+
         self.x, self.y, self.facing = current_state
-        self.table.robots[self.x][self.y] = self
+
+        self.table.update_robot_grid(self.id, self.x, self.y)
+        self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
         
         return {"success": True, "message": "Last command has been undone."}
     

@@ -262,7 +262,7 @@ class TestRobot:
         assert result1 == '0,0,NORTH,0'
         assert result2 == '1,1,EAST,0'
 
-    def test_multiple_robots_collision(self):
+    def test_multiple_robots_placement_collision(self):
         table = Table(5, 5)
         robot1 = Robot(table, 'Robot 1')
         robot2 = Robot(table, 'Robot 2')
@@ -284,3 +284,11 @@ class TestRobot:
         result2 = robot2.execute('REPORT')
         assert result1 == '0,0,NORTH,0'
         assert result2 == '1,0,WEST,0'
+
+    def test_table_tracking_robot_position(self):
+        table = Table(5, 5)
+        robot = Robot(table, 'Robot 1')
+        robot.execute('PLACE 0,0,NORTH')
+        robot.execute('MOVE')
+        result = table.get_robot_position(robot.id)
+        assert result == '0,1,NORTH,1'
