@@ -119,6 +119,14 @@ deltas = {
 # 访问
 dx, dy = deltas['NORTH']  # (0, 1)
 
+# 访问不存在的键会抛出 KeyError
+# deltas['SOUTH_EAST']  # KeyError: 'SOUTH_EAST'
+
+# 用 .get() 避免错误（返回 None 或默认值）
+delta = deltas.get('NORTH')         # (0, 1)
+delta = deltas.get('UNKNOWN')       # None
+delta = deltas.get('UNKNOWN', (0, 0))  # (0, 0)
+
 # 检查键是否存在
 if 'NORTH' in deltas:
     print("存在")
