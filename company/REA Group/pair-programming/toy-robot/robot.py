@@ -46,7 +46,7 @@ class Robot:
         """Move the robot one unit forward in the direction it's facing."""
 
         if not self.is_placed():
-            return False
+            return {"success": False, "message": "Robot is not placed on the table."}
         
         dx, dy = self.DIRECTION_DELTAS[self.facing]
         if direction == "backward":

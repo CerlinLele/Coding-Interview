@@ -65,7 +65,7 @@ class TestRobot:
         assert self.robot.y == 0
     
     def test_move_without_placement(self):
-        assert self.robot.move() == False
+        assert self.robot.move().get("success") == False
     
     def test_left_rotation(self):
         self.robot.place(0, 0, 'NORTH')
@@ -143,7 +143,7 @@ class TestRobot:
         assert result == '0,0,NORTH,0'
 
     def test_backward_without_placement(self):
-        assert self.robot.execute('BACKWARD') == False
+        assert self.robot.execute('BACKWARD').get("success") == False
 
     def test_backward_invalid_direction(self):
         self.robot.execute('PLACE 1,3,NORTH')
