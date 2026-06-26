@@ -33,6 +33,9 @@ One trade off may be large sparse tables, in that case, set maybe more suitable.
     As for report(), we can stay as it is. Because we just need to print something, not a real execution.
     
     1. **Robot identity unused** — You added `id` and `name` to each robot, but they're never actually used anywhere. Why did you add them? How are you planning to use them later?
+
+    Maybe currently we just want to make identification. Because different robots may have the same name. It is for the future. In real world coding, we both need id and name. Or if we want to persist the robots, we need unique ids.
+
     - now we want to return a more detailed log message to inform the users why our command failed. Here is how our name is used: to tell the user which robot it collided with.
 
 Every time the robots move, they will check whether there is an obstacle or another robot.
