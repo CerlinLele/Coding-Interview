@@ -143,7 +143,7 @@ class TestRobot:
         assert result == '0,0,NORTH,0'
 
     def test_backward_without_placement(self):
-        assert self.robot.backward() == False
+        assert self.robot.execute('BACKWARD') == False
 
     def test_backward_invalid_direction(self):
         self.robot.execute('PLACE 1,3,NORTH')

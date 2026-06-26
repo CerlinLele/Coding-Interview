@@ -41,13 +41,16 @@ class Robot:
 
         return True
     
-    def move(self):
+    def move(self, direction="forward"):
         """Move the robot one unit forward in the direction it's facing."""
 
         if not self.is_placed():
             return False
         
         dx, dy = self.DIRECTION_DELTAS[self.facing]
+        if direction == "backward":
+            dx, dy = -dx, -dy
+        
         new_x = self.x + dx
         new_y = self.y + dy
         
@@ -89,33 +92,6 @@ class Robot:
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
         return True
-
-    def backward(self):
-        """Move the robot one unit backward in the direction it's facing."""
-
-        if not self.is_placed():
-            return False
-        
-        dx, dy = self.DIRECTION_DELTAS[self.facing]
-        new_x = self.x - dx
-        new_y = self.y - dy
-        
-        if self.table.is_valid_position(new_x, new_y):
-            self.history.append((self.x, self.y, self.facing))
-            
-            self.table.robots[self.x][self.y] = None
-
-            self.x = new_x
-            self.y = new_y
-
-            self.move_count += 1
-
-            self.table.robots[new_x][new_y] = self
-            
-            return True
-        
-        return False    
-    
     def undo(self):
         """Undo the last command."""
         if not self.history:
@@ -160,19 +136,19 @@ class Robot:
                 return None
         
         elif command == 'MOVE':
-            self.move()
+            return self.move(direction="forward")
+
+        elif command == 'BACKWARD':
+            return self.move(direction="backward")
         
         elif command == 'LEFT':
-            self.left()
+            return self.left()
         
         elif command == 'RIGHT':
-            self.right()
+            return self.right()
         
         elif command == 'REPORT':
             return self.report()
-
-        elif command == 'BACKWARD':
-            self.backward()
         
         elif command == 'UNDO':
             return self.undo()
