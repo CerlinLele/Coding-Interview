@@ -599,6 +599,7 @@ Excellent choice! Option C is pragmatic. Here's why:
 Option C gives both! The cost is minimal — just maintain both history structures.
 
 **Design for Option C**:
+
 ```python
 # Each Robot has its own history
 robot.history = [(x, y, facing), ...]
@@ -616,3 +617,112 @@ table.undo()   # Uses table.command_history
 ```
 
 **Decision confirmed**: Support both per-robot and global UNDO (Option C). Flexible and user-friendly.
+
+---
+
+## Question 5.1: Backward Compatibility
+
+**Problem**: The original Toy Robot system is designed for a single robot. Your new system supports multiple robots. Should the old API still work?
+
+**Context**: Existing code might look like:
+
+```python
+table = Table(5, 5)
+robot = Robot(table)
+robot.place(0, 0, 'NORTH')
+robot.move()
+robot.move()
+print(robot.report())
+```
+
+**The question**: Should this old code continue to work unchanged?
+
+**Options**:
+
+**(A) Fully backward compatible**: New code works with 1 or many robots
+
+```python
+# Old code works as-is
+table = Table(5, 5)
+robot = Robot(table)
+robot.place(0, 0, 'NORTH')
+
+# New code works too
+robot2 = Robot(table)
+robot2.place(2, 2, 'EAST')
+# Both robots coexist on same table
+```
+
+**(B) Separate implementations**: Keep old single-robot code, add new multi-robot code
+
+```python
+# Old API (unchanged)
+table_old = SingleRobotTable(5, 5)
+robot_old = Robot(table_old)
+
+# New API (separate)
+table_multi = MultiRobotTable(5, 5)
+robot1 = Robot(table_multi)
+robot2 = Robot(table_multi)
+```
+
+**(C) Migration layer**: Old API calls new code internally
+
+```python
+# Old code works, but powered by new multi-robot system
+table = Table(5, 5)  # New multi-robot Table
+robot = Robot(table)  # Internally manages single robot
+# Technically works, but implementation is 2-tier
+```
+
+**Your Answer**: A ✅
+
+**Rationale**: Open-Close Principle
+
+**Interviewer Feedback**:
+Perfect! Your reasoning is spot-on. Option A is the right choice.
+
+**Why Open-Close Principle applies here**:
+- "Open for extension" — add multi-robot features without changing existing code
+- "Closed for modification" — old single-robot code works unchanged
+
+**How it works in practice**:
+```python
+# Your new Table is "open for extension"
+table = Table(5, 5)
+
+# Single robot (old way) still works
+robot = Robot(table)
+robot.place(0, 0, 'NORTH')
+robot.move()
+
+# Multiple robots (new way) works too
+robot2 = Robot(table)
+robot2.place(2, 2, 'EAST')
+robot2.move()
+
+# Both coexist on the same table naturally
+```
+
+**What this means for implementation**:
+- Table.robots_dict can contain 0, 1, or N robots
+- Robot doesn't need to know if it's alone or not
+- All your earlier decisions (UUID, hybrid storage, SRP) support this naturally
+
+**Decision confirmed**: Fully backward compatible (Option A). The multi-robot system IS the general system; single-robot is just a special case (N=1).
+
+---
+
+## 🎉 Design Phase Complete!
+
+All 8 design decisions are locked in:
+1. ✅ Q1.1: UUID for robot identification
+2. ✅ Q1.2: Hybrid storage (dict + 2D grid)
+3. ✅ Q2.1: Collision detection in is_valid_position()
+4. ✅ Q2.2: Dict response with details
+5. ✅ Q3.1: Direct instantiation + place() pattern
+6. ✅ Q3.2: Robot calls table.update_robot_position()
+7. ✅ Q4.1: Support both per-robot and global UNDO
+8. ✅ Q5.1: Fully backward compatible
+
+**Next: IMPLEMENTATION** 🚀
