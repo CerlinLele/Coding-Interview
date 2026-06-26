@@ -43,6 +43,63 @@ def backward(self):
     return False
 ```
 
+**重构优化（如果面试官追问或有时间）**：
+
+面试官可能会说："你会发现 `move()` 和 `backward()` 代码很相似，能不能优化一下？"
+
+第一步观察：两个方法唯一的区别是方向。
+
+```python
+# move()：dx, dy = self.DIRECTION_DELTAS[self.facing]；new_x = self.x + dx
+# backward()：dx, dy = self.DIRECTION_DELTAS[self.facing]；new_x = self.x - dx
+```
+
+第二步设计：引入 `direction` 参数，在方向差值层面处理。
+
+```python
+def move(self, direction="forward"):
+    """Move the robot one unit in the specified direction."""
+    if not self.is_placed():
+        return False
+    
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    if direction == "backward":
+        dx, dy = -dx, -dy  # 取反方向
+    
+    new_x = self.x + dx
+    new_y = self.y + dy
+    
+    if self.table.is_valid_position(new_x, new_y):
+        self.history.append((self.x, self.y, self.facing))
+        self.x = new_x
+        self.y = new_y
+        self.move_count += 1
+        return True
+    
+    return False
+```
+
+第三步更新命令处理：
+
+```python
+elif command == 'MOVE':
+    self.move(direction="forward")
+
+elif command == 'BACKWARD':
+    self.move(direction="backward")
+```
+
+**重构要点**：
+- ✓ **消除重复**：31 行代码合并，职责单一
+- ✓ **易于维护**：修改一处即同步两个方向（边界检查、历史记录、网格更新）
+- ✓ **逻辑清晰**：参数明确表达意图（正向 vs 反向）
+- ⚠️ **权衡**：参数多了一个，需要文档说明默认值；但好处是避免了方法重复
+
+**面试官的反应**：
+- 好的反馈："很不错，这就是 DRY（Don't Repeat Yourself）原则"
+- 可能追问："如果以后要加 DIAGONAL（斜向）呢？现在的参数设计还能扩展吗？"
+  - 回答思路："目前参数是字符串，如果需要更多方向，可以考虑用枚举（Enum）或四元组坐标，但现在需求还不明确，所以字符串够用"
+
 ---
 
 ### Level 2：状态管理扩展（15-20 分钟）
