@@ -250,4 +250,15 @@ class TestRobot:
         robot.execute('BACKWARD')  # blocked by obstacle at (1,2)
         result = robot.execute('REPORT')
         assert result == '1,3,NORTH,0'
+
+    def test_multiple_robots_coexist(self):
+        table = Table(5, 5)
+        robot1 = Robot(table, 'Robot 1')
+        robot2 = Robot(table, 'Robot 2')
+        robot1.execute('PLACE 0,0,NORTH')
+        robot2.execute('PLACE 1,1,EAST')
+        result1 = robot1.execute('REPORT')
+        result2 = robot2.execute('REPORT')
+        assert result1 == '0,0,NORTH,0'
+        assert result2 == '1,1,EAST,0'
     

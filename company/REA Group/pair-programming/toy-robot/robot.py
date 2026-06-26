@@ -1,3 +1,5 @@
+import uuid
+
 class Robot:
     """Represents a toy robot that can move on a table."""
     
@@ -9,8 +11,10 @@ class Robot:
         'WEST': (-1, 0)
     }
     
-    def __init__(self, table):
+    def __init__(self, table, name="anonymous"):
         self.table = table
+        self.id = uuid.uuid4()
+        self.name = name
         self.x = None
         self.y = None
         self.facing = None
@@ -32,6 +36,9 @@ class Robot:
         self.x = x
         self.y = y
         self.facing = facing
+        
+        self.table.robots[x][y] = self
+
         return True
     
     def move(self):
@@ -47,9 +54,14 @@ class Robot:
         if self.table.is_valid_position(new_x, new_y):
             self.history.append((self.x, self.y, self.facing)) 
 
+            self.table.robots[self.x][self.y] = None
+
             self.x = new_x
             self.y = new_y
             self.move_count += 1
+
+            self.table.robots[new_x][new_y] = self
+
             return True
         
         return False
@@ -90,9 +102,16 @@ class Robot:
         
         if self.table.is_valid_position(new_x, new_y):
             self.history.append((self.x, self.y, self.facing))
+            
+            self.table.robots[self.x][self.y] = None
+
             self.x = new_x
             self.y = new_y
+
             self.move_count += 1
+
+            self.table.robots[new_x][new_y] = self
+            
             return True
         
         return False    

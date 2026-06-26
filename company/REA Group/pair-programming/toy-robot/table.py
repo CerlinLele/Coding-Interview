@@ -5,15 +5,20 @@ class Table:
         self.width = width
         self.height = height
 
-        # 始终初始化障碍物网格
+        # initialize obstacles grid
         self.obstacles = [[0 for _ in range(width)] for _ in range(height)]
-        # 如果提供了障碍物列表，标记它们
+        # if obstacles are provided, mark them
         if obstacles is not None:
             for obstacle in obstacles:
                 self.obstacles[obstacle[0]][obstacle[1]] = 1
 
-        self.robots = []
+        # initialize robots grid
+        self.robots = [[None for _ in range(width)] for _ in range(height)]
     
     def is_valid_position(self, x, y):
-        """Check if a position is within the table boundaries."""
-        return 0 <= x < self.width and 0 <= y < self.height and self.obstacles[x][y] == 0
+        """
+        1. Check if a position is within the table boundaries.
+        2. Check if the position is not occupied by an obstacle.
+        3. Check if the position is not occupied by another robot.
+        """
+        return 0 <= x < self.width and 0 <= y < self.height and self.obstacles[x][y] == 0 and self.robots[x][y] is None
