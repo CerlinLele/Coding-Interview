@@ -726,3 +726,90 @@ All 8 design decisions are locked in:
 8. ✅ Q5.1: Fully backward compatible
 
 **Next: IMPLEMENTATION** 🚀
+
+---
+
+## Implementation Plan
+
+### Overview
+Refactor the existing Toy Robot to support multi-robot based on design decisions above.
+
+### Phase 1: Refactor Table class
+
+**Changes to Table**:
+- [ ] Add `uuid` module import
+- [ ] Add `robots_dict = {robot_uuid: robot_object}` for robot management
+- [ ] Add `robots_grid[x][y] = robot_uuid` for position tracking (2D array)
+- [ ] Add `update_robot_position(old_pos, new_pos, robot_uuid)` method
+  - Clear old position: `robots_grid[old_pos] = None`
+  - Set new position: `robots_grid[new_pos] = robot_uuid`
+- [ ] Update `is_valid_position(x, y)` to check for robots
+  - Existing checks: boundary, obstacles
+  - **New**: check if `robots_grid[x][y]` contains a robot
+- [ ] Add `register_robot(robot, x, y, facing)` method (called from robot.place())
+- [ ] Add `get_robot(robot_uuid)` method for lookup
+
+### Phase 2: Refactor Robot class
+
+**Changes to Robot**:
+- [ ] Add `uuid` module import
+- [ ] Add `self.robot_id = uuid.uuid4()` in `__init__`
+- [ ] Update `place(x, y, facing)` to:
+  - Validate position
+  - Register with table: `self.table.register_robot(self, x, y, facing)`
+  - Update own state
+  - Return success/failure
+- [ ] Update `move()` to:
+  - Calculate new position
+  - Call `self.table.is_valid_position(new_x, new_y)` (collision check included)
+  - If valid, call `self.table.update_robot_position((old_x, old_y), (new_x, new_y), self.robot_id)`
+  - Update own state (x, y)
+  - Return dict: `{"success": True, "reason": "moved", "collision_with": None, "position": (x, y)}`
+  - If invalid, return dict: `{"success": False, "reason": "collision/boundary/obstacle", "collision_with": robot_id or None, "position": (new_x, new_y)}`
+- [ ] Update `backward()` similarly to `move()`
+- [ ] Update `left()` and `right()` (no table updates needed, only internal state)
+- [ ] Update `report()` to include move_count
+- [ ] Add global `undo()` to table if needed for bonus feature
+
+### Phase 3: Test multi-robot scenarios
+
+**Test cases to implement**:
+- [ ] Create 2+ robots on same table
+- [ ] Move robot 1, verify position updated in table
+- [ ] Move robot 2, verify collision with robot 1 is detected
+- [ ] Collision response returns correct robot UUID
+- [ ] Per-robot UNDO works (robot.undo())
+- [ ] Global UNDO works (table.undo()) - bonus
+- [ ] Single robot still works (backward compatibility)
+
+### Phase 4: Integration & Polish
+
+- [ ] Update `main.py` interactive demo to support multi-robot commands
+- [ ] Handle edge cases (undo at boundaries, multiple undos, etc.)
+- [ ] Code review: check for SRP violations, encapsulation
+
+### Files to Modify
+
+```
+toy-robot/
+├── table.py          ← Add robot tracking, update_robot_position()
+├── robot.py          ← Add UUID, update move() return format
+├── main.py           ← Optional: update interactive demo
+└── test_robot.py     ← Add multi-robot tests
+```
+
+### Estimated Timeline
+
+- Phase 1 (Table refactor): ~20 min
+- Phase 2 (Robot refactor): ~25 min
+- Phase 3 (Testing): ~25 min
+- Phase 4 (Polish): ~15 min
+- **Total**: ~85 minutes
+
+### Success Criteria
+
+- ✅ All existing single-robot tests pass
+- ✅ New multi-robot tests pass
+- ✅ Collision detection works correctly
+- ✅ Move response format is correct
+- ✅ No breaking changes to existing API
