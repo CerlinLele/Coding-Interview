@@ -18,9 +18,16 @@ class Table:
         # initialize robot positions
         self.robot_positions = {}
 
-    def update_robot_grid(self, uuid, x, y):
+    def update_robot_grid(self, uuid, name, x, y):
         """Update the robot grid by uuid."""
-        self.robots[x][y] = uuid
+        if uuid is None and name is None:
+            self.robots[x][y] = None
+        else:
+            self.robots[x][y] = (uuid, name)
+
+    def get_robot_by_position(self, x, y):
+        """Get the robot grid by x and y."""
+        return self.robots[x][y]
 
     def update_robot_position(self, uuid, position):
         """Update the position of a robot tracked on this table by uuid."""
@@ -50,8 +57,8 @@ class Table:
         elif self.obstacles[x][y] == 1:
             message = "The position is occupied by an obstacle."
         # check if the position is occupied by another robot
-        elif self.robots[x][y] is not None:
-            message = f"The position is occupied by another robot: {self.robots[x][y]}."
+        elif self.get_robot_by_position(x, y) is not None:
+            message = f"The position is occupied by another robot: {self.get_robot_by_position(x, y)}."
         # if the position is valid, return success and message
         else:
             success = True

@@ -37,10 +37,14 @@ Every time a robot is placed on the table or the position has changed. We should
 
 - **Robot identity** — You added `id` and `name` to each robot. Currently, we use them for identification since different robots may have the same name. UUIDs are used to track robot positions in the grid.
 
-    Maybe currently we just want to make identification. Because different robots may have the same name. It is for the future. In real world coding, we both need id and name. Or if we want to persist the robots, we need unique ids.
-    uuid can be used to track the position of a robot. We can only keep uuids in robots grid.
+    When we want to return a detailed log message about which robot collided, we need the robot's name instead of just the UUID. We may not want to use a registry pattern:
 
-    - now we want to return a more detailed log message to inform the users why our command failed. Here is how our name is used: to tell the user which robot it collided with.
+    ```python
+    robot = RobotRegistry.get(uuid)
+    robot.name
+    ```
+
+    Now we can just save (uuid, name) in the gird, and use it as the map key also.
 
 When the robots move, they will check whether there is an obstacle or another robot occupying the target cell (`robots[x][y]`).
 
