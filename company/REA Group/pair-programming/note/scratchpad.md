@@ -80,3 +80,21 @@ the table need to update the robots grid
     
     1. before: empty the current position
     2. after: reset back to previous position
+
+**2. Robot management — who owns the robots?**
+
+Right now robots are created externally:`robot1 = Robot(table, 'Robot 1')
+robot2 = Robot(table, 'Robot 2')`
+
+Should the Table instead manage robot creation and registration? Like:
+
+`table = Table(5, 5)
+robot1 = table.create_robot('Robot 1')
+robot2 = table.create_robot('Robot 2')`
+
+And then you could do things like:
+
+`all_robots = table.get_all_robots()
+robot = table.get_robot('Robot 1')`
+
+I would like to keep my current option. Because robot is not born from table, live with the table. They are independent, their lifecycle don't end with table. They just use tables as reference.
