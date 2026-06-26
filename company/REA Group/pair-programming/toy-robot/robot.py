@@ -74,39 +74,42 @@ class Robot:
         """Rotate the robot 90 degrees to the left."""
         
         if not self.is_placed():
-            return False
+            return {"success": False, "message": "Robot is not placed on the table."}
 
         self.history.append((self.x, self.y, self.facing))
         
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index - 1) % 4]
-        return True
+        return {"success": True, "message": "Rotated 90 degrees to the left."}
     
     def right(self):
         """Rotate the robot 90 degrees to the right."""
 
         if not self.is_placed():
-            return False
+            return {"success": False, "message": "Robot is not placed on the table."}
 
         self.history.append((self.x, self.y, self.facing))
         
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
-        return True
+        return {"success": True, "message": "Rotated to the right."}
+
     def undo(self):
         """Undo the last command."""
         if not self.history:
-            return False
+            return {"success": False, "message": "No history to undo."}
         
         current_state = self.history.pop()
         if current_state[2] == self.facing:
+            if self.move_count <= 0:
+                return {"success": False, "message": "No moves to undo."}
             self.move_count -= 1
 
         self.table.robots[self.x][self.y] = None
         self.x, self.y, self.facing = current_state
         self.table.robots[self.x][self.y] = self
         
-        return True
+        return {"success": True, "message": "Last command has been undone."}
     
     def report(self):
         """Return the current position and facing direction."""

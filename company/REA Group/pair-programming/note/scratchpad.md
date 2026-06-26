@@ -13,6 +13,25 @@ One trade off may be large sparse tables, in that case, set maybe more suitable.
 - They can't occupy the same cell
 - They need collision detection/handling
 - **PLACE onto occupied cell** — In your `place()` method, you check `is_valid_position()` which now checks for other robots. But what's the expected behavior? Should PLACE fail silently if the cell is occupied, or should it return False and log something?
+    
+    ```jsx
+    {"success": bool, "message": str}
+    ```
+    
+    I should keep it consistent for 
+    
+    - place
+    - move
+    - left
+    - right
+    - undo
+    
+    and they return their own validation result.
+    
+    Because it is their responsibility for them to report their blockers as a student. Not first just report failure to their teacher(`execute()`) without any reason but the teacher need to guess.
+
+    As for report(), we can stay as it is. Because we just need to print something, not a real execution.
+    
     1. **Robot identity unused** — You added `id` and `name` to each robot, but they're never actually used anywhere. Why did you add them? How are you planning to use them later?
     - now we want to return a more detailed log message to inform the users why our command failed. Here is how our name is used: to tell the user which robot it collided with.
 

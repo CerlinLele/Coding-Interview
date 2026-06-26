@@ -159,7 +159,7 @@ class TestRobot:
         assert result == '0,0,NORTH,0'
     
     def test_undo_without_placement(self):
-        assert self.robot.undo() == False
+        assert self.robot.undo().get("success") == False
 
     def test_undo_multiple_times(self):
         self.robot.execute('PLACE 0,0,NORTH')
@@ -175,7 +175,7 @@ class TestRobot:
         self.robot.execute('MOVE')
         self.robot.execute('UNDO')
         second_undo = self.robot.execute('UNDO')
-        assert second_undo == False
+        assert second_undo.get("success") == False
         result = self.robot.execute('REPORT')
         assert result == '0,0,NORTH,0'
 
@@ -183,7 +183,7 @@ class TestRobot:
         self.robot.execute('PLACE 0,0,SOUTH')
         self.robot.execute('MOVE')  # fails — at boundary
         second_undo = self.robot.execute('UNDO')
-        assert second_undo == False
+        assert second_undo.get("success") == False
         result = self.robot.execute('REPORT')
         assert result == '0,0,SOUTH,0'
 
