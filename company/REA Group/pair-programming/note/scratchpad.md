@@ -19,7 +19,7 @@ Every time a robot is placed on the table or the position has changed. We should
 - They need collision detection/handling
 - **PLACE onto occupied cell** — In your `place()` method, you check `is_valid_position()` which now checks for other robots. But what's the expected behavior? Should PLACE fail silently if the cell is occupied, or should it return False and log something?
     
-    ```jsx
+    ```python
     {"success": bool, "message": str}
     ```
     
@@ -62,14 +62,14 @@ name: human-readable
 
 Open-close & DI
 
-```jsx
+```python
 robot1 = Robot(table, 'Robot 1')
 robot2 = Robot(table, 'Robot 2')
 ```
 
 ### manage
 
-```jsx
+```python
 robot1.execute('PLACE 0,0,NORTH')
 robot2.execute('PLACE 1,1,EAST')
 ```
@@ -89,18 +89,26 @@ the table need to update the robots grid
 
 **2. Robot management — who owns the robots?**
 
-Right now robots are created externally:`robot1 = Robot(table, 'Robot 1')
-robot2 = Robot(table, 'Robot 2')`
+Right now robots are created externally:
+
+```python
+robot1 = Robot(table, 'Robot 1')
+robot2 = Robot(table, 'Robot 2')
+```
 
 Should the Table instead manage robot creation and registration? Like:
 
-`table = Table(5, 5)
+```python
+table = Table(5, 5)
 robot1 = table.create_robot('Robot 1')
-robot2 = table.create_robot('Robot 2')`
+robot2 = table.create_robot('Robot 2')
+```
 
 And then you could do things like:
 
-`all_robots = table.get_all_robots()
-robot = table.get_robot('Robot 1')`
+```python
+all_robots = table.get_all_robots()
+robot = table.get_robot('Robot 1')
+```
 
 I would like to keep my current option. Because robot is not born from table, live with the table. They are independent, their lifecycle don't end with table. They just use tables as reference.
