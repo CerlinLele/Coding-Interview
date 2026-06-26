@@ -193,6 +193,97 @@ def __init__(self, width, height, obstacles=None):
 
 ---
 
+## 重构：代码整合
+
+### MOVE 与 BACKWARD 的合并
+
+原先 `move()` 和 `backward()` 有大量重复逻辑：
+
+```python
+# ❌ 重复代码
+def move(self):
+    if not self.is_placed():
+        return False
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    new_x, new_y = self.x + dx, self.y + dy  # 正向
+    # ... 相同的合法性检查、历史记录、网格更新逻辑
+
+def backward(self):
+    if not self.is_placed():
+        return False
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    new_x, new_y = self.x - dx, self.y - dy  # 反向
+    # ... 完全相同的合法性检查、历史记录、网格更新逻辑
+```
+
+**重构方案**：增加 `direction` 参数，在方向差值层面处理正向/反向区别。
+
+```python
+def move(self, direction="forward"):
+    """Move the robot one unit in the specified direction."""
+    if not self.is_placed():
+        return False
+    
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    if direction == "backward":
+        dx, dy = -dx, -dy  # 反向：取反方向差值
+    
+    new_x = self.x + dx
+    new_y = self.y + dy
+    
+    if self.table.is_valid_position(new_x, new_y):
+        self.history.append((self.x, self.y, self.facing))
+        self.table.robots[self.x][self.y] = None
+        self.x = new_x
+        self.y = new_y
+        self.move_count += 1
+        self.table.robots[new_x][new_y] = self
+        return True
+    
+    return False
+```
+
+**命令处理层**：通过参数区分命令意图。
+
+```python
+elif command == 'MOVE':
+    self.move(direction="forward")
+
+elif command == 'BACKWARD':
+    self.move(direction="backward")
+```
+
+**优点**：
+- ✓ 消除 31 行重复代码
+- ✓ 修改一处即可同步两个方向的行为（边界检查、历史记录、网格更新）
+- ✓ 新增方向逻辑时只需改一处
+
+**教训**：相似的方法应在抽象层面寻找共同点，用参数或枚举区分变化部分，而非逐字复制代码。
+
+---
+
+## 多机器人功能
+
+### 设计决策
+
+| 问题 | 决策 | 理由 |
+|------|------|------|
+| 多机器人存储？ | 2D 数组 `table.robots[x][y]` | O(1) 碰撞检查，适合固定大小的表格 |
+| 机器人标识？ | UUID + 名字 | 名字用于错误消息，UUID 保留扩展性 |
+| 碰撞检测时机？ | `is_valid_position()` | 单一职责，place/move 都复用 |
+| 错误信息？ | 返回字典 `{"success": bool, "message": str}` | 清晰的错误原因（边界/障碍物/机器人） |
+
+### 实现进度
+
+- ✓ 机器人标识（id, name）
+- ✓ 2D 网格追踪位置
+- ✓ 碰撞检测和错误消息
+- ✓ 网格在 place/move/backward/undo 中同步
+- ✓ 命令返回格式标准化（所有命令返回字典）
+- ⏳ 待决：UUID 必要性、Table 是否应管理机器人生命周期
+
+---
+
 ## 测试覆盖
 
 最终 37 个测试全部通过，覆盖：
@@ -201,3 +292,4 @@ def __init__(self, width, height, obstacles=None):
 - UNDO（单次、多次、超出历史、failed move 后撤销）
 - MOVE_COUNT（移动计数、旋转不计、失败不计、UNDO 回退）
 - Obstacle（MOVE 和 BACKWARD 被障碍物阻止）
+- 多机器人共存
