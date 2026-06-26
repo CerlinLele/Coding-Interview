@@ -273,3 +273,14 @@ class TestRobot:
         assert result1 == '0,0,NORTH,0'
         assert result2 == None
     
+    def test_multiple_robots_collision(self):
+        table = Table(5, 5)
+        robot1 = Robot(table, 'Robot 1')
+        robot2 = Robot(table, 'Robot 2')
+        robot1.execute('PLACE 0,0,NORTH')
+        robot2.execute('PLACE 1,0,WEST')
+        robot2.execute('MOVE')
+        result1 = robot1.execute('REPORT')
+        result2 = robot2.execute('REPORT')
+        assert result1 == '0,0,NORTH,0'
+        assert result2 == '1,0,WEST,0'
