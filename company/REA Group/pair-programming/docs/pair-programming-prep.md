@@ -220,11 +220,4 @@ REA 明确说明会从三个维度评估：
 
 ---
 
-## 参考资料
-
-- [面试说明原文](./instructions.md)
-- [电话面试复盘](../1.%20initial%20phone%20call/interview-qa-pairs.md)
-- [REA JD 分析](../../Software%20Engineer-jd-analysis.md)
-- [REA 公司调研](../../company-research.md)
-
 预祝顺利！记住 REA 看重的是 **pragmatism** 和 **learning mindset**，不是算法竞赛。
