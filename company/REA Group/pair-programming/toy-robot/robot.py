@@ -28,10 +28,11 @@ class Robot:
     def place(self, x, y, facing):
         """Place the robot at position (x, y) facing a direction."""
         if facing not in self.DIRECTIONS:
-            return False
-        
-        if not self.table.is_valid_position(x, y):
-            return False
+            return {"success": False, "message": "Invalid facing direction."}
+
+        validation_result = self.table.is_valid_position(x, y)
+        if not validation_result.get("success"):
+            return validation_result
         
         self.x = x
         self.y = y
@@ -39,7 +40,7 @@ class Robot:
         
         self.table.robots[x][y] = self
 
-        return True
+        return validation_result
     
     def move(self, direction="forward"):
         """Move the robot one unit forward in the direction it's facing."""
@@ -53,8 +54,10 @@ class Robot:
         
         new_x = self.x + dx
         new_y = self.y + dy
+
+        validation_result = self.table.is_valid_position(new_x, new_y)
         
-        if self.table.is_valid_position(new_x, new_y):
+        if validation_result.get("success"):
             self.history.append((self.x, self.y, self.facing)) 
 
             self.table.robots[self.x][self.y] = None
@@ -64,10 +67,8 @@ class Robot:
             self.move_count += 1
 
             self.table.robots[new_x][new_y] = self
-
-            return True
         
-        return False
+        return validation_result
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
@@ -133,7 +134,7 @@ class Robot:
                 y = int(coords_and_facing[1])
                 facing = coords_and_facing[2]
                 
-                self.place(x, y, facing)
+                return self.place(x, y, facing)
             except (ValueError, IndexError):
                 return None
         

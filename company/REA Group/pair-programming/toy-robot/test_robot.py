@@ -6,20 +6,20 @@ from table import Table
 class TestTable:
     def test_valid_position(self):
         table = Table(5, 5)
-        assert table.is_valid_position(0, 0) == True
-        assert table.is_valid_position(4, 4) == True
-        assert table.is_valid_position(2, 3) == True
+        assert table.is_valid_position(0, 0).get("success") == True
+        assert table.is_valid_position(4, 4).get("success") == True
+        assert table.is_valid_position(2, 3).get("success") == True
     
     def test_invalid_position(self):
         obstacles = [(1, 3), (2, 3), (3, 3)]
         table = Table(5, 5, obstacles)
-        assert table.is_valid_position(-1, 0) == False
-        assert table.is_valid_position(0, -1) == False
-        assert table.is_valid_position(5, 0) == False
-        assert table.is_valid_position(0, 5) == False
-        assert table.is_valid_position(1, 3) == False
-        assert table.is_valid_position(2, 3) == False
-        assert table.is_valid_position(3, 3) == False   
+        assert table.is_valid_position(-1, 0).get("success")== False
+        assert table.is_valid_position(0, -1).get("success") == False
+        assert table.is_valid_position(5, 0).get("success") == False
+        assert table.is_valid_position(0, 5).get("success") == False
+        assert table.is_valid_position(1, 3).get("success") == False
+        assert table.is_valid_position(2, 3).get("success") == False
+        assert table.is_valid_position(3, 3).get("success") == False   
 
 
 class TestRobot:
@@ -31,19 +31,19 @@ class TestRobot:
         assert self.robot.is_placed() == False
     
     def test_place_robot_valid_position(self):
-        assert self.robot.place(0, 0, 'NORTH') == True
+        assert self.robot.place(0, 0, 'NORTH').get("success") == True
         assert self.robot.is_placed() == True
         assert self.robot.x == 0
         assert self.robot.y == 0
         assert self.robot.facing == 'NORTH'
     
     def test_place_robot_invalid_position(self):
-        assert self.robot.place(-1, 0, 'NORTH') == False
-        assert self.robot.place(5, 5, 'NORTH') == False
+        assert self.robot.place(-1, 0, 'NORTH').get("success") == False
+        assert self.robot.place(5, 5, 'NORTH').get("success") == False
         assert self.robot.is_placed() == False
     
     def test_place_robot_invalid_direction(self):
-        assert self.robot.place(0, 0, 'INVALID') == False
+        assert self.robot.place(0, 0, 'INVALID').get("success") == False
         assert self.robot.is_placed() == False
     
     def test_move_north(self):

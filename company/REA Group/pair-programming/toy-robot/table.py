@@ -21,4 +21,24 @@ class Table:
         2. Check if the position is not occupied by an obstacle.
         3. Check if the position is not occupied by another robot.
         """
-        return 0 <= x < self.width and 0 <= y < self.height and self.obstacles[x][y] == 0 and self.robots[x][y] is None
+        success = False
+        message = "This is not a valid position."
+
+        # check if the position is within the table boundaries
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            message = "The position is out of the table boundaries."
+        # check if the position is occupied by an obstacle
+        elif self.obstacles[x][y] == 1:
+            message = "The position is occupied by an obstacle."
+        # check if the position is occupied by another robot
+        elif self.robots[x][y] is not None:
+            message = f"The position is occupied by another robot: {self.robots[x][y].name}."
+        # if the position is valid, return success and message
+        else:
+            success = True
+            message = "The position is valid."
+        return {
+            "success": success,
+            "message": message,
+        }
+        
