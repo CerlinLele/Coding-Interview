@@ -62,6 +62,75 @@ def _move_in_direction(self, direction_multiplier):
 
 **决策确认**：`backward()` 单独实现，即使有代码重复。
 
+**后续重构：消除重复**
+
+在代码发展过程中，发现 `move()` 和 `backward()` 有大量重复逻辑。虽然最初选择了分离的设计（便于理解），但当两个方法都需要同步修改时（如添加历史记录、网格更新、障碍物检查），重复成为维护成本。
+
+重构方案：用参数统一两个方法。
+
+**观察**：两个方法唯一的区别是方向。
+```python
+# move()：new_x = self.x + dx, new_y = self.y + dy
+# backward()：new_x = self.x - dx, new_y = self.y - dy
+```
+
+**重构后的实现**：
+```python
+def move(self, direction="forward"):
+    """Move the robot one unit in the specified direction."""
+    if not self.is_placed():
+        return False
+    
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    if direction == "backward":
+        dx, dy = -dx, -dy  # 取反方向
+    
+    new_x = self.x + dx
+    new_y = self.y + dy
+    
+    if self.table.is_valid_position(new_x, new_y):
+        self.history.append((self.x, self.y, self.facing))
+        self.table.robots[self.x][self.y] = None
+        self.x = new_x
+        self.y = new_y
+        self.move_count += 1
+        self.table.robots[new_x][new_y] = self
+        return True
+    
+    return False
+```
+
+**命令处理层更新**：
+```python
+elif command == 'MOVE':
+    self.move(direction="forward")
+
+elif command == 'BACKWARD':
+    self.move(direction="backward")
+```
+
+**权衡分析**：
+
+| 维度 | 分离实现 (B) | 参数化统一 | 结论 |
+|------|-----------|---------|------|
+| **代码行数** | 31 行重复 | 无重复，集中 | 参数化优 |
+| **维护成本** | 改一处要改两处 | 改一处 | 参数化优 |
+| **理解难度** | 立即明白 | 需读参数文档 | 分离优 |
+| **适用时机** | Level 1（快速）| Level 1+ 追问（重构） | 都有场景 |
+
+**何时重构**：
+- 有时间且面试官暗示"代码有重复" → 重构
+- 时间紧张 → 保持分离实现
+- 面试官明确要求 DRY → 立即重构
+
+**面试官期望的表现**：
+1. 先做出 B 方案（清晰、正确）
+2. 面试官追问"有没有办法优化"时，说出参数化思路
+3. 指出权衡："参数化去重，但多一个参数需要文档"
+4. 快速实现并验证测试通过
+
+**教训**：最优的架构不是一开始就完美，而是随代码增长而演进。清晰 > 完美。
+
 ---
 
 ## Question 1.2: 历史记录保存时机
