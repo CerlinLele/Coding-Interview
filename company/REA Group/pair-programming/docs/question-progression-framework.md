@@ -464,3 +464,424 @@ def shortest_path(robot, target_x, target_y):
 - 能否**识别**当前问题是什么数据结构/算法类型
 - 能否**说清楚**选择的理由和权衡
 - 能否**快速实现**一个够用的版本，而不是最优版本
+
+---
+
+## 更多扩展方向（面试练习题库）
+
+下面是一组**当前文档尚未覆盖**的扩展方向，专门用于正式面试前的练习。
+每一条都基于你现有的代码约定：
+
+- 方法返回 `{"success": bool, "message": str}`（`report()` 例外，返回字符串或 `None`）
+- `history` 是 `(x, y, facing)` 元组栈，`move_count` 记录有效移动数
+- `DIRECTION_DELTAS` / `DIRECTIONS` 驱动方向逻辑
+- `execute()` 用 if-elif 分发命令
+- `table.robots` 是二维网格，存 `Robot` 或 `None`
+
+练习方法：盖住"实现思路"，只看"典型题目"，自己先口述方案 → 写实现 → 跑测试 → 再对照。
+
+---
+
+### 扩展 A：REDO（重做）— 难度 ★★
+
+文档里已经在追问表格提到"REDO 需要第二个栈"，这里做成完整练习。
+
+**典型题目**：
+- 实现 `REDO`，重做刚刚被 `UNDO` 撤销的操作
+- 连续 `UNDO` 后能连续 `REDO` 回到最新状态
+
+**考察点**：
+- 双栈设计（undo 栈 + redo 栈）
+- 关键边界：**执行新命令后 redo 栈必须清空**（这是最容易漏的点，面试官常追问）
+- `move_count` 在 redo 时如何同步
+
+**应对策略**：
+- 先说清不变量："任何新的 MOVE/LEFT/RIGHT 都会让 redo 历史失效，这点和编辑器的撤销/重做一致"
+- 指出现有 `undo()` 已经在 pop history，我只要在 pop 时把状态推到 redo 栈
+
+**示例实现思路**：
+
+```python
+def __init__(self, table, name="anonymous"):
+    # ... 现有字段
+    self.redo_stack = []  # 新增
+
+def _record_for_redo(self, state):
+    self.redo_stack.append(state)
+
+def undo(self):
+    if not self.history:
+        return {"success": False, "message": "No history to undo."}
+    # 撤销前，把"当前状态"存进 redo 栈，方便 REDO 回来
+    self.redo_stack.append((self.x, self.y, self.facing))
+    # ... 现有 undo 逻辑
+
+def redo(self):
+    if not self.redo_stack:
+        return {"success": False, "message": "Nothing to redo."}
+    self.history.append((self.x, self.y, self.facing))
+    self.table.robots[self.x][self.y] = None
+    self.x, self.y, self.facing = self.redo_stack.pop()
+    self.table.robots[self.x][self.y] = self
+    return {"success": True, "message": "Redone."}
+
+# 在任何"产生新历史"的命令里（move/left/right）清空 redo 栈：
+def move(self, direction="forward"):
+    # ... 移动成功后：
+    self.redo_stack.clear()
+```
+
+**面试官常用追问**：
+- "如果 UNDO 后又执行了 MOVE，再 REDO 会怎样？" → redo 栈已清空，REDO 失败，这是正确行为
+- "move_count 怎么对齐？" → redo 一个移动要 +1，redo 一个转向不变，逻辑和 undo 镜像
+
+---
+
+### 扩展 B：MOVE n（一次移动多步）— 难度 ★★
+
+**典型题目**：
+- 支持 `MOVE 3`，向前移动 3 步
+- 路上遇到边界/障碍/其他机器人就**停在最后一个合法格子**，而不是整体失败
+
+**考察点**：
+- "尽力而为"语义 vs "全有全无"语义 —— 你能不能主动问面试官想要哪种
+- 复用单步 `move()` 而不是复制逻辑
+- `move_count` 累加几次
+
+**应对策略**：
+- 先确认语义："MOVE 3 如果第二步就撞墙，你是希望停在第一步，还是整个命令失败回退？我倾向停在能到的最远处，更符合直觉"
+- 复用现有单步 move：循环调用，遇到失败就 break
+
+**示例实现思路**：
+
+```python
+def move_steps(self, steps, direction="forward"):
+    if not self.is_placed():
+        return {"success": False, "message": "Robot is not placed on the table."}
+
+    moved = 0
+    for _ in range(steps):
+        result = self.move(direction)  # 复用单步逻辑，含历史/计数/网格更新
+        if not result.get("success"):
+            break
+        moved += 1
+
+    return {
+        "success": moved > 0,
+        "message": f"Moved {moved} of {steps} step(s).",
+    }
+```
+
+**`execute()` 解析**：
+
+```python
+elif command.startswith('MOVE'):
+    parts = command.split()
+    steps = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 1
+    return self.move_steps(steps, direction="forward")
+```
+
+**面试官常用追问**：
+- "MOVE 3 撞墙停在第 2 格，UNDO 一次会退几格？" → 因为每步都进 history，UNDO 一次只退一格（要主动说明这个设计选择）
+- "MOVE 0 或 MOVE -1 呢？" → 边界校验，负数应拒绝或视为 0
+
+---
+
+### 扩展 C：环绕桌面 / TELEPORT 边界（toroidal）— 难度 ★★
+
+**典型题目**：
+- 改为环绕地图：从右边缘 MOVE 出去会出现在左边缘（吃豆人式）
+- 或者增加一个可切换的"环绕模式"
+
+**考察点**：
+- 把"是否越界"的策略与移动逻辑解耦
+- 取模运算 `% width` / `% height`
+- 这是个很好的"开放讨论"题：要不要做成可配置策略
+
+**应对策略**：
+- 务实开场："最简单的方式是在算 new_x 后对宽高取模，但这样会绕过现有的边界检查，所以我想把它做成 Table 的一个模式"
+- 强调不破坏障碍物/碰撞逻辑：环绕只影响边界，落点仍要过 `is_valid_position`
+
+**示例实现思路**（落点计算放在 Robot，合法性仍交给 Table）：
+
+```python
+def _next_cell(self, dx, dy):
+    nx, ny = self.x + dx, self.y + dy
+    if self.table.wrap:                 # Table 新增 wrap 标志
+        nx %= self.table.width
+        ny %= self.table.height
+    return nx, ny
+```
+
+**面试官常用追问**：
+- "环绕模式下还会有'掉下桌子'吗？" → 不会，但障碍物和机器人碰撞仍然挡路
+- "如果桌子是 1×1 呢？" → 环绕后原地不动，注意别死循环
+
+---
+
+### 扩展 D：FACE X,Y（转向目标）/ SCAN（传感）— 难度 ★★★
+
+**典型题目**：
+- `FACE X,Y`：原地旋转到最接近目标点的四个正方向之一
+- `SCAN`：返回当前朝向上第一个障碍物/机器人/边界的距离
+
+**考察点**：
+- 把"目标方向"映射到离散的四方向（涉及 dx/dy 的符号判断）
+- SCAN 是一个小的"射线步进"循环，体现你对网格遍历的掌握
+- 复用 `DIRECTION_DELTAS`
+
+**应对策略**：
+- FACE 先讲简化："只支持四个正方向，所以我看 dx、dy 谁的绝对值大，就朝那个轴；这是一种合理的近似"
+- SCAN 讲清返回什么："我返回到第一个障碍的步数，没有障碍就返回到边界的距离"
+
+**示例实现思路**：
+
+```python
+def scan(self):
+    """沿当前朝向探测，返回到第一个阻挡的距离。"""
+    if not self.is_placed():
+        return {"success": False, "message": "Robot is not placed on the table."}
+
+    dx, dy = self.DIRECTION_DELTAS[self.facing]
+    distance = 0
+    x, y = self.x, self.y
+    while True:
+        x, y = x + dx, y + dy
+        if not self.table.is_valid_position(x, y).get("success"):
+            break
+        distance += 1
+    return {"success": True, "message": f"Clear for {distance} cell(s) ahead."}
+```
+
+**面试官常用追问**：
+- "FACE 对角线方向（dx == dy）怎么办？" → 需要定一个 tie-break 规则，主动说出来
+- "SCAN 能区分撞墙还是撞机器人吗？" → 可以让 `is_valid_position` 的 message 透传出来，体现你之前 return dict 的设计有了回报
+
+---
+
+### 扩展 E：从文件批量执行 + 错误报告 — 难度 ★★
+
+注意：文档 Level 4 已有"文件读取"骨架，这里的练习重点是**当前 `execute()` 对非法命令静默返回 `None`**，面试官常会借此考你错误处理。
+
+**典型题目**：
+- 从文件读命令并执行（Level 4 已有）
+- **升级**：非法命令不再静默忽略，而是收集行号和原因，最后汇总报告
+
+**考察点**：
+- 你是否注意到现有 `execute()` 把所有错误都吞成了 `None`
+- 区分"未知命令"和"命令合法但执行失败"（如越界）
+- 不破坏现有交互式 main 的行为
+
+**应对策略**：
+- 先点出现状："现在 `execute()` 对 `PLACE x` 这种格式错误直接返回 None，用户不知道为什么没反应"
+- 提出小改进："我让 execute 对未知命令也返回一个 success=False 的 dict，这样文件执行器就能统计错误"
+
+**示例实现思路**：
+
+```python
+def run_file(robot, filepath):
+    errors = []
+    with open(filepath) as f:
+        for lineno, line in enumerate(f, start=1):
+            cmd = line.strip()
+            if not cmd:
+                continue
+            result = robot.execute(cmd)
+            if result is None:
+                errors.append((lineno, cmd, "unknown or malformed command"))
+            elif isinstance(result, dict) and not result.get("success"):
+                errors.append((lineno, cmd, result.get("message")))
+    return errors
+```
+
+**面试官常用追问**：
+- "为什么 REPORT 返回字符串而别的返回 dict，不别扭吗？" → 诚实回答这是历史遗留的不一致，可以统一成 dict 但会动到现有测试，属于权衡
+- "文件里有一行 EXIT 怎么办？" → 在批量模式里 EXIT 应该停止后续执行
+
+---
+
+### 扩展 F：重构 —— 用分发表替换 if-elif 链 — 难度 ★★★
+
+**典型题目**：
+- 面试官："现在 `execute()` 里 7 个 if-elif，如果命令涨到 20 个会很长，能优化吗？"
+
+**考察点**：
+- 这是经典的"何时该抽象"判断题 —— 千万别一上来就上策略模式
+- 能否用最轻量的"字典分发"而不是一堆类
+- 重构时保持所有测试通过
+
+**应对策略**：
+- 先守住务实底线："7 个命令用 if-elif 其实很清晰，重构是为了可读和加新命令方便，不是为了炫技"
+- 选最轻方案："我用一个 `{命令: 处理函数}` 字典，比抽象基类 + 命令类轻得多"
+- 强调 PLACE/MOVE n 这类**带参数**的命令是分发表的难点，要单独说
+
+**示例实现思路**：
+
+```python
+def __init__(self, ...):
+    # 无参命令的分发表
+    self._commands = {
+        'MOVE':     lambda: self.move("forward"),
+        'BACKWARD': lambda: self.move("backward"),
+        'LEFT':     self.left,
+        'RIGHT':    self.right,
+        'REPORT':   self.report,
+        'UNDO':     self.undo,
+    }
+
+def execute(self, command):
+    command = command.strip().upper()
+    if command.startswith('PLACE'):
+        return self._handle_place(command)   # 带参数的单独处理
+    handler = self._commands.get(command)
+    return handler() if handler else None
+```
+
+**面试官常用追问**：
+- "PLACE 带参数，放不进这个表，怎么办？" → 老实说带参命令需要单独解析，分发表只优雅地处理无参命令；强行统一反而更复杂
+- "什么时候才值得上命令模式（Command 类）？" → 当你需要把命令**对象化**（排队、序列化、网络传输、统一 undo 接口）时才值得，现在不需要
+
+---
+
+### 扩展 G：保存 / 加载状态（序列化）— 难度 ★★
+
+**典型题目**：
+- `SAVE` 把当前所有机器人和障碍物状态写盘
+- `LOAD` 恢复，使会话可中断续玩
+
+**考察点**：
+- 选什么格式（JSON 最务实）
+- 哪些字段需要持久化（`uuid` 要不要存？`history` 要不要存？）
+- 反序列化时如何重建 `table.robots` 二维网格
+
+**应对策略**：
+- 务实选型："JSON 够了，人类可读、标准库支持，不需要 pickle 的复杂和安全风险"
+- 主动划范围："我先存位置、朝向、障碍物这些核心状态，history 是否要存取决于是否要求保留 undo 能力"
+
+**示例实现思路**：
+
+```python
+import json
+
+def to_dict(self):
+    return {"x": self.x, "y": self.y, "facing": self.facing,
+            "name": self.name, "move_count": self.move_count}
+
+def save_table(table, filepath):
+    state = {
+        "width": table.width,
+        "height": table.height,
+        "robots": [c.to_dict() for row in table.robots for c in row if c],
+    }
+    with open(filepath, "w") as f:
+        json.dump(state, f)
+```
+
+**面试官常用追问**：
+- "uuid 用 json 能直接序列化吗？" → 不能，要 `str(self.id)`，这是个好的细节考点
+- "加载时位置冲突怎么办？" → 走现有 `is_valid_position` 校验，体现复用
+
+---
+
+### 扩展 H：机器人推挤（MOVE 时推动前方机器人）— 难度 ★★★★
+
+**典型题目**：
+- 当机器人 MOVE 撞到另一个机器人时，不再被挡住，而是**把对方推一格**（如果对方后面是空的）
+- 推不动（对方后面是墙/障碍/第三个机器人）则整体失败
+
+**考察点**：
+- 多对象联动状态更新（两个机器人 + table 网格同时变）
+- 递归/链式推动（A 推 B，B 又顶着 C）—— 很好的开放讨论点
+- 失败回退：推到一半发现推不动怎么保持一致性
+
+**应对策略**：
+- 先做单层推动，明确不处理连环推："我先实现推一个，连环推动我会在确认这个能跑之后再说"
+- 强调原子性："我先检查整条推动链是否可行，全部可行才真正移动，避免推一半的脏状态"
+
+**示例实现思路**（单层推动）：
+
+```python
+def move(self, direction="forward"):
+    # ... 算出 new_x, new_y
+    validation = self.table.is_valid_position(new_x, new_y)
+    if not validation.get("success"):
+        occupant = self.table.robots[new_x][new_y]
+        if occupant is not None:           # 撞到的是机器人 → 尝试推
+            push_result = occupant.move(direction)  # 让对方朝同方向走
+            if not push_result.get("success"):
+                return validation          # 推不动，整体失败
+            validation = self.table.is_valid_position(new_x, new_y)  # 对方让开后重新校验
+        else:
+            return validation              # 撞墙/障碍，正常失败
+    # ... 正常移动
+```
+
+**面试官常用追问**：
+- "A 推 B，B 后面是 C，能连环推吗？" → 上面的递归写法天然支持，但要小心两个机器人面对面互推的死循环
+- "推动算谁的 move_count？" → 设计选择题，主动表态（我倾向各算各的）
+
+---
+
+### 扩展 I：回放 / REPLAY — 难度 ★★
+
+**典型题目**：
+- 记录完整命令序列，`REPLAY` 从初始状态重新逐步执行并打印每一步
+- 用于演示或调试
+
+**考察点**：
+- 区分"状态历史"（你现在的 `history` 栈）和"命令历史"（要新增）
+- 重放需要先重置到初始状态
+- 与 UNDO 的 history 不冲突
+
+**应对策略**：
+- 指出现有 history 存的是状态快照，不能直接拿来重放；重放需要单独记原始命令字符串
+- 简单实现：在 `execute()` 成功时把命令追加到 `command_log`
+
+**示例实现思路**：
+
+```python
+def execute(self, command):
+    result = self._dispatch(command)   # 原有逻辑抽到 _dispatch
+    if result and (not isinstance(result, dict) or result.get("success")):
+        self.command_log.append(command.strip().upper())
+    return result
+
+def replay(self):
+    log = list(self.command_log)
+    self.__init__(self.table, self.name)   # 重置
+    for cmd in log:
+        print(f"{cmd} -> {self.execute(cmd)}")
+```
+
+**面试官常用追问**：
+- "REPLAY 时 table 上别的机器人还在原位吗？" → 暴露了重置范围问题，主动讨论是重置单个机器人还是整张桌子
+- "命令日志会无限增长吗？" → 同 UNDO 的内存讨论，可设上限
+
+---
+
+### 练习用难度索引
+
+| 扩展 | 难度 | 主要考点 | 适合的面试阶段 |
+|------|------|---------|--------------|
+| A. REDO | ★★ | 双栈、不变量 | Level 2 状态管理 |
+| B. MOVE n | ★★ | 复用、语义澄清 | Level 1-2 |
+| C. 环绕边界 | ★★ | 策略解耦、取模 | Level 1 + 开放讨论 |
+| D. FACE/SCAN | ★★★ | 方向映射、射线步进 | Level 2-3 |
+| E. 文件+错误报告 | ★★ | 错误处理、API 一致性 | Level 4 |
+| F. 分发表重构 | ★★★ | 何时抽象、克制 | Level 4 重构 |
+| G. 保存/加载 | ★★ | 序列化、字段取舍 | Level 3-4 |
+| H. 机器人推挤 | ★★★★ | 多对象联动、原子性 | Level 3 复杂交互 |
+| I. REPLAY | ★★ | 命令 vs 状态历史 | Level 2-3 |
+
+---
+
+### 练习时给自己的检查清单
+
+每做完一道扩展，自检是否做到了：
+
+- [ ] **开口确认语义**：在写代码前问清楚"你想要哪种行为？"（尤其 B、C、H）
+- [ ] **复用而非复制**：有没有调用现有的 `move()` / `is_valid_position()`，而不是抄一遍逻辑
+- [ ] **主动说权衡**：至少说出一个"我选 X 而不是 Y，因为……"
+- [ ] **立即验证**：写完先跑一个最小例子，再补边界测试
+- [ ] **诚实暴露局限**：主动说"现在没处理 ____，如果需要我可以……"
+- [ ] **克制抽象**：没有为了一个小功能引入一堆类/模式
