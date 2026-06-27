@@ -10,22 +10,37 @@ I will choose 2d array to store the positions of multiple robots.
 
 One trade-off is that large sparse tables waste memory. In that case, using a Set might be more suitable.
 
-- **Table as source of truth** — If the table is tracking robot positions in a grid, but each robot also tracks its own `(x, y)`, how do you keep them in sync? What if they diverge?\
-  robot_positions map is not necessary, since robot already manage its position.
+- **Table as source of truth** — If the table is tracking robot positions in a grid, but each robot also tracks its own `(x, y)`, how do you keep them in sync? What if they diverge?
+
+### Triple-state problem
+
+1. We should keep **Robot object** as the source of truth
+2. **Table.robots grid** is to check whether there is a collision
+3. **Table.robot_positions map** may seems unnecessary since Robot object itself already tracked its own position. But since we don't have a robot registry now. We may keep it at the moment. In the future,  we can use:
+
+   ```
+   robot = RobotRegistry.get(uuid)
+   robot.x
+   robot.y
+   ```
 
 # Collision detection/handling
 
 - They can't occupy the same cell →They need collision detection/handling
+
   - **PLACE onto occupied cell** — In your `place()` method, you check `is_valid_position()` which now checks for other robots. But what's the expected behavior? Should PLACE fail silently if the cell is occupied, or should it return False and log something? \
     I should keep it consistent for:
+
     - `place()`
     - `move()`
     - `left()`
     - `right()`
-    - `undo() `
+    - `undo()`
 
     They return their own validation result because it's their responsibility to report blockers to the user, not silently fail without explanation. As for `report()`, we can stay as it is. Because we just need to print something, not a real execution.
+
 - **Robot identity** — You added `id` and `name` to each robot. Currently, we use them for identification since different robots may have the same name. UUIDs are used to track robot positions in the grid. When we want to return a detailed log message about which robot collided, we need the robot's name instead of just the UUID. We may not want to use a registry pattern: Now we can just save `(uuid, name)` in the gird, and use it as the map key also.
+
   - When the robots move, they will check whether there is an obstacle or another robot occupying the target cell (`robots[x][y]`).
 
 # Robot
