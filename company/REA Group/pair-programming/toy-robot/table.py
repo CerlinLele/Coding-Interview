@@ -1,6 +1,6 @@
 class Table:
-    """Represents the tabletop surface."""
-    
+    """Represents the tabletop surface with multi-robot support."""
+
     def __init__(self, width, height, obstacles=None):
         self.width = width
         self.height = height

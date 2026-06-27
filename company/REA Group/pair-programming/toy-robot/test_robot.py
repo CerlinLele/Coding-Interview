@@ -26,44 +26,48 @@ class TestRobot:
     def setup_method(self):
         self.table = Table(5, 5)
         self.robot = Robot(self.table)
-    
+
     def test_robot_not_placed_initially(self):
         assert self.robot.is_placed() == False
-    
+
     def test_place_robot_valid_position(self):
         assert self.robot.place(0, 0, 'NORTH').get("success") == True
         assert self.robot.is_placed() == True
         assert self.robot.x == 0
         assert self.robot.y == 0
         assert self.robot.facing == 'NORTH'
-    
+
     def test_place_robot_invalid_position(self):
         assert self.robot.place(-1, 0, 'NORTH').get("success") == False
         assert self.robot.place(5, 5, 'NORTH').get("success") == False
         assert self.robot.is_placed() == False
-    
+
     def test_place_robot_invalid_direction(self):
         assert self.robot.place(0, 0, 'INVALID').get("success") == False
         assert self.robot.is_placed() == False
-    
+
     def test_move_north(self):
         self.robot.place(0, 0, 'NORTH')
-        self.robot.move()
+        result = self.robot.move()
+        assert result["success"] == True
         assert self.robot.x == 0
         assert self.robot.y == 1
-    
+
     def test_move_east(self):
         self.robot.place(0, 0, 'EAST')
-        self.robot.move()
+        result = self.robot.move()
+        assert result["success"] == True
         assert self.robot.x == 1
         assert self.robot.y == 0
-    
+
     def test_move_prevents_falling(self):
         self.robot.place(0, 0, 'SOUTH')
-        self.robot.move()
+        result = self.robot.move()
+        assert result["success"] == False
+        assert result["reason"] == "boundary"
         assert self.robot.x == 0
         assert self.robot.y == 0
-    
+
     def test_move_without_placement(self):
         assert self.robot.move().get("success") == False
     
@@ -77,7 +81,7 @@ class TestRobot:
         assert self.robot.facing == 'EAST'
         self.robot.left()
         assert self.robot.facing == 'NORTH'
-    
+
     def test_right_rotation(self):
         self.robot.place(0, 0, 'NORTH')
         self.robot.right()
@@ -88,21 +92,21 @@ class TestRobot:
         assert self.robot.facing == 'WEST'
         self.robot.right()
         assert self.robot.facing == 'NORTH'
-    
+
     def test_report(self):
         self.robot.place(1, 2, 'EAST')
         assert self.robot.report() == '1,2,EAST,0'
-    
+
     def test_report_without_placement(self):
         assert self.robot.report() is None
-    
+
     def test_execute_place_command(self):
         self.robot.execute('PLACE 0,0,NORTH')
         assert self.robot.is_placed() == True
         assert self.robot.x == 0
         assert self.robot.y == 0
         assert self.robot.facing == 'NORTH'
-    
+
     def test_execute_sequence(self):
         self.robot.execute('PLACE 0,0,NORTH')
         self.robot.execute('MOVE')
@@ -129,7 +133,7 @@ class TestRobot:
         self.robot.execute('MOVE')
         result = self.robot.execute('REPORT')
         assert result == '3,3,NORTH,3'
-    
+
     def test_commands_before_placement_ignored(self):
         self.robot.execute('MOVE')
         self.robot.execute('LEFT')
@@ -157,7 +161,7 @@ class TestRobot:
         self.robot.execute('UNDO')
         result = self.robot.execute('REPORT')
         assert result == '0,0,NORTH,0'
-    
+
     def test_undo_without_placement(self):
         assert self.robot.undo().get("success") == False
 
@@ -238,16 +242,129 @@ class TestRobot:
         table = Table(5, 5, obstacles)
         robot = Robot(table)
         robot.execute('PLACE 0,0,NORTH')
-        robot.execute('MOVE')  # blocked by obstacle at (0,1)
-        result = robot.execute('REPORT')
-        assert result == '0,0,NORTH,0'
+        result = robot.move()  # blocked by obstacle at (0,1)
+        assert result["success"] == False
+        assert result["reason"] == "obstacle"
+        report_result = robot.execute('REPORT')
+        assert report_result == '0,0,NORTH,0'
 
     def test_backward_blocked_by_obstacle(self):
         obstacles = [(1, 2)]
         table = Table(5, 5, obstacles)
         robot = Robot(table)
         robot.execute('PLACE 1,3,NORTH')
-        robot.execute('BACKWARD')  # blocked by obstacle at (1,2)
+        result = robot.backward()  # blocked by obstacle at (1,2)
+        assert result["success"] == False
+        assert result["reason"] == "obstacle"
+        report_result = robot.execute('REPORT')
+        assert report_result == '1,3,NORTH,0'
+
+
+class TestMultiRobot:
+    """Test multi-robot scenarios (design decision 5.1: backward compatible)."""
+
+    def test_two_robots_on_same_table(self):
+        table = Table(5, 5)
+        robot_a = Robot(table)
+        robot_b = Robot(table)
+
+        # Place both robots
+        assert robot_a.place(0, 0, 'NORTH') == True
+        assert robot_b.place(2, 2, 'EAST') == True
+
+        # Verify both are placed
+        assert robot_a.is_placed() == True
+        assert robot_b.is_placed() == True
+        assert robot_a.report() == '0,0,NORTH,0'
+        assert robot_b.report() == '2,2,EAST,0'
+
+    def test_collision_detection(self):
+        table = Table(5, 5)
+        robot_a = Robot(table)
+        robot_b = Robot(table)
+
+        # Place robots
+        robot_a.place(0, 0, 'EAST')
+        robot_b.place(1, 0, 'WEST')
+
+        # Try to move A into B
+        result = robot_a.move()
+        assert result["success"] == False
+        assert result["reason"] == "collision"
+        assert result["collision_with"] == str(robot_b.robot_id)
+
+    def test_robots_move_independently(self):
+        table = Table(5, 5)
+        robot_a = Robot(table)
+        robot_b = Robot(table)
+
+        # Place robots at different positions
+        robot_a.place(0, 0, 'NORTH')
+        robot_b.place(2, 2, 'EAST')
+
+        # Move A
+        result_a = robot_a.move()
+        assert result_a["success"] == True
+        assert robot_a.report() == '0,1,NORTH,1'
+
+        # Move B independently
+        result_b = robot_b.move()
+        assert result_b["success"] == True
+        assert robot_b.report() == '3,2,EAST,1'
+
+    def test_three_robots_collision_chain(self):
+        table = Table(5, 5)
+        robot_a = Robot(table)
+        robot_b = Robot(table)
+        robot_c = Robot(table)
+
+        # Place in a line: A at (0,0), B at (1,0), C at (2,0)
+        robot_a.place(0, 0, 'EAST')
+        robot_b.place(1, 0, 'EAST')
+        robot_c.place(2, 0, 'EAST')
+
+        # A tries to move into B
+        result_a = robot_a.move()
+        assert result_a["success"] == False
+        assert result_a["reason"] == "collision"
+
+        # B tries to move into C
+        result_b = robot_b.move()
+        assert result_b["success"] == False
+        assert result_b["reason"] == "collision"
+
+        # C can move freely
+        result_c = robot_c.move()
+        assert result_c["success"] == True
+        assert robot_c.report() == '3,0,EAST,1'
+
+    def test_per_robot_undo(self):
+        table = Table(5, 5)
+        robot_a = Robot(table)
+        robot_b = Robot(table)
+
+        # Place both
+        robot_a.place(0, 0, 'NORTH')
+        robot_b.place(2, 2, 'EAST')
+
+        # Move both
+        robot_a.move()
+        robot_b.move()
+
+        # Undo only A
+        robot_a.undo()
+        assert robot_a.report() == '0,0,NORTH,0'
+        assert robot_b.report() == '3,2,EAST,1'  # B unchanged
+
+    def test_backward_compatible_single_robot(self):
+        """Verify single-robot still works (design decision 5.1)."""
+        table = Table(5, 5)
+        robot = Robot(table)
+
+        # Original single-robot code should work
+        robot.execute('PLACE 0,0,NORTH')
+        robot.execute('MOVE')
+        robot.execute('MOVE')
         result = robot.execute('REPORT')
         assert result == '1,3,NORTH,0'
 
