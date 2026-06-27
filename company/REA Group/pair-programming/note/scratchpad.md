@@ -31,7 +31,7 @@ Add a new method `jump(n)`
 - Check one cell ahead, we want move as far as we can until we are blocked.
 
 When I stop early, I will return\
-company\\REA Group\\pair-programming\\toy-robot\\[table.py](http://table.py) 
+company\\REA Group\\pair-programming\\toy-robot\\[table.py](http://table.py)
 
 ```
 # check if the position is occupied by an obstacle
@@ -41,6 +41,8 @@ elif self.obstacles[x][y] == 1:
 elif self.get_robot_by_position(x, y) is not None:
     message = f"The position is occupied by another robot: {self.get_robot_by_position(x, y)}."
 ```
+
+1. At the beginning, I thought `jump(n)` means `move()` n steps. But then I realized the history track is different. `jump(n)` will be considered as only one record in the history. But every move will have one record.
 
 # Storage
 
