@@ -137,6 +137,59 @@ deltas.values()
 deltas.items()  # [('NORTH', (0, 1)), ...]
 ```
 
+**常见错误：Dict 没有 .set() 方法**
+
+```python
+# ❌ 错误：Python dict 没有 .set() 方法（那是Java/JavaScript的）
+result = {}
+result.set("position", (0, 1))  # AttributeError: 'dict' object has no attribute 'set'
+
+# ✅ 正确：使用 dict[key] = value 赋值
+result = {}
+result["position"] = (0, 1)
+result["success"] = True
+result["message"] = "Operation successful"
+
+# ✅ 或使用 .update() 方法
+result.update({"position": (0, 1), "success": True})
+
+# ✅ 或使用 .setdefault()（仅当键不存在时设置）
+result.setdefault("position", (0, 1))
+```
+
+**为什么？**
+
+- Python dict 只有 `[]` 赋值语法，没有 `.set()` 方法
+- `.set()` 是 Java 和 JavaScript 的 Map/Object 方法
+- Python 中 `.set` 指的是 set 数据类型（集合），不是方法
+
+**重要：Dict 键的限制**
+
+```python
+# ✅ 可以用作 dict key（不可变）
+dict_key_int = {1: 'one', 2: 'two'}
+dict_key_tuple = {(0, 0): 'origin', (1, 2): 'position'}
+dict_key_str = {'NORTH': (0, 1), 'EAST': (1, 0)}
+
+# ❌ 不能用作 dict key（可变）
+# set 是可变的，不能作为 key
+# invalid_dict = {{1, 2}: 'value'}  # TypeError: unhashable type: 'set'
+
+# ❌ list 也是可变的
+# invalid_dict = {[1, 2]: 'value'}  # TypeError: unhashable type: 'list'
+
+# ✅ 如果要用集合作为键，用 frozenset（不可变集合）
+valid_dict = {frozenset([1, 2]): 'value'}  # 可以！
+print(valid_dict[frozenset([1, 2])])  # 'value'
+```
+
+**为什么？**
+
+- Dict 键需要是 **hashable**（可哈希）的
+- Set 和 List 是 **可变的**（mutable），不能被哈希
+- Tuple、frozenset、int、str 是 **不可变的**（immutable），可被哈希
+- 如果键的值改变，dict 就无法找到这个键
+
 ---
 
 ## 列表（常用于历史记录、状态栈）
