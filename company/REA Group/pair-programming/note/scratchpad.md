@@ -43,6 +43,7 @@ elif self.get_robot_by_position(x, y) is not None:
 ```
 
 1. At the beginning, I thought `jump(n)` means `move()` n steps. But then I realized the history track is different. `jump(n)` will be considered as only one record in the history. But every move will have one record.
+2. For the calculation of `move_count` , I may choose atomic operation instead of all or nothing. Because previously we decided that we can reach to the fareast as we can. So it actually **moved**. If we choose all-or-nothing, it seems like we stay at the start point.
 
 # Storage
 
