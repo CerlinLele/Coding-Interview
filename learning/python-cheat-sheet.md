@@ -306,15 +306,17 @@ except Exception as e:
 ```python
 import pytest
 from robot import Robot
+from table import Table
 
 class TestRobot:
     def setup_method(self):
         """每个测试前执行"""
-        self.robot = Robot()
+        self.table = Table(5, 5)
+        self.robot = Robot(self.table)
     
     def test_place_valid_position(self):
         """测试方法名要以 test_ 开头"""
-        assert self.robot.place(0, 0, 'NORTH') == True
+        assert self.robot.place(0, 0, 'NORTH').get("success") == True
         assert self.robot.x == 0
         assert self.robot.y == 0
     
@@ -322,12 +324,68 @@ class TestRobot:
         self.robot.place(0, 0, 'NORTH')
         self.robot.move()
         assert self.robot.y == 1
+    
+    def test_move_prevents_falling(self):
+        """测试边界检查 - 返回字典包含 success 和 reason"""
+        self.robot.place(0, 0, 'SOUTH')
+        result = self.robot.move()  # 尝试向南走，但边界在 y=-1
+        
+        # 检查返回值结构
+        assert result["success"] == False
+        assert result["reason"] == "boundary"
+        
+        # 检查机器人没有移动
+        assert self.robot.x == 0
+        assert self.robot.y == 0
 
 # 运行测试
 # pytest                    # 运行所有测试
 # pytest -v                # 详细输出
 # pytest test_robot.py     # 运行特定文件
+# pytest test_robot.py::TestRobot::test_move_prevents_falling  # 运行单个测试
 ```
+
+### pytest 显示 print() 输出
+
+pytest 默认捕获 print() 输出。要显示它们，使用以下选项：
+
+```python
+def test_debug_movement(self):
+    """在测试中使用 print 调试"""
+    self.robot.place(0, 0, 'NORTH')
+    result = self.robot.move()
+    
+    print(f"Robot position: ({self.robot.x}, {self.robot.y})")
+    print(f"Move result: {result}")
+    
+    assert self.robot.y == 1
+```
+
+**运行命令：**
+
+```bash
+# -s: 显示 print() 输出（最常用）
+pytest -s test_robot.py
+
+# -v: 详细模式 + -s: 显示 print
+pytest -vs test_robot.py
+
+# 运行单个测试并显示输出
+pytest -s test_robot.py::TestRobot::test_debug_movement
+
+# --capture=no 的效果同 -s
+pytest --capture=no test_robot.py
+```
+
+**持久配置（创建 pytest.ini）：**
+
+在项目根目录创建 `pytest.ini`：
+```ini
+[pytest]
+addopts = -s -v
+```
+
+然后直接运行 `pytest test_robot.py` 就会自动使用这些选项。
 
 ---
 
