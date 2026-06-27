@@ -47,6 +47,18 @@ The same check-then-act gap exists in `place()`.
 **Step 1 — Pragmatically scope it out:**
 > "Right now this design executes commands serially on a single thread, so there is no concurrency problem. I'd only need synchronisation if we actually required concurrent execution."
 
+**Synchronisation** means coordinating multiple executors (threads/processes) so they access shared resources in the correct order without conflict. Without synchronisation, everyone rushes in at once and whoever writes last wins — the intermediate state is unpredictable. With synchronisation, mutual exclusion is enforced and state stays consistent.
+
+Common synchronisation mechanisms:
+
+| Mechanism | Purpose |
+|-----------|---------|
+| Lock / Mutex | Only one thread can enter the critical section at a time |
+| Queue | Turn concurrency into serial — everyone lines up, processed one by one |
+| Semaphore | Allow at most N threads to access simultaneously |
+
+In the toy robot, `try_occupy`'s `with self._lock` is the most basic form of synchronisation — it tells all robots: "Want to claim a cell? Queue up, one at a time."
+
 **Step 2 — If they push, identify the problem instead of rushing to add a lock:**
 > "The issue is that `is_valid_position` (the check) and occupying the cell are two separate steps — that's a classic check-then-act race condition."
 
