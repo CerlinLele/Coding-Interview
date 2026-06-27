@@ -43,8 +43,6 @@ When I stop early, I will return
 The user may also want to know about where we are at after this execution. So I will also include position in return object.\
 Refactored in other executions also.
 
-If we
-
 1. At the beginning, I thought `jump(n)` means `move()` n steps. But then I realized the history track is different. `jump(n)` will be considered as only one record in the history. But every move will have one record.
 2. For the calculation of `move_count` , I may choose atomic operation instead of all or nothing. Because previously we decided that we can reach to the fareast as we can. So it actually **moved**. If we choose all-or-nothing, it seems like we stay at the start point.\
    Now we also need to save `move_count` into the history for `undo()` . Because undo may not just decrease move_count by 1 this time.
@@ -57,7 +55,13 @@ If we
 
 I will choose 2d array to store the positions of multiple robots.
 
-One trade-off is that large sparse tables waste memory. In that case, using a Set might be more suitable.
+- **At what point would you switch from 2D array to a Set-based approach?** What's your threshold? 10×10? 100×100? 1000×1000? And **how would you make that decision in code** — should it be automatic, or should the user specify it when creating a Table?
+
+  One trade-off is that large sparse tables waste memory. In that case, using a Set might be more suitable.
+  - Threshold: # of robots / # of grid over 50%: \
+    depend on the initial design and expection
+  - We may still choose 2d array instead of set, unless we are sure that the table will be sparse all the time.\
+    I may stick to it unless there is an issue. Both the storage will be `O(n*n)` , so I think it is ok.
 
 - **Table as source of truth** — If the table is tracking robot positions in a grid, but each robot also tracks its own `(x, y)`, how do you keep them in sync? What if they diverge?
 
