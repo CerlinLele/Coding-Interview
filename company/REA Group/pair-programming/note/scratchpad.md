@@ -1,5 +1,29 @@
 # **Multiple robots**
 
+# Jump
+
+```
+robot1 = Robot(table, "Robot A")
+robot2 = Robot(table, "Robot B")
+
+robot1.execute("PLACE 0,0,NORTH")
+robot2.execute("PLACE 1,0,EAST")
+
+robot1.execute("MOVE")  # robot1 tries to move to (0,1)
+# Expected: Success
+
+robot1.execute("JUMP 3")  # robot1 tries to jump 3 steps north from (0,1)
+# What should happen?
+```
+
+**A) Stop at the robot's position and fail (treat the robot like a wall)**\
+<span style="color: rgb(74, 158, 232);">I choose this one.</span>\
+B) Stop before the robot and succeed (stop at last valid position)\
+<span style="color: rgb(74, 158, 232);">We don't achieve enough steps, so it is cannot be considered as success.</span>\
+C) Skip over the robot and keep jumping (allow 'jumping over')
+
+<span style="color: rgb(74, 158, 232);">I don't prefer jump over at this moment, because since we set obstacles and collisions, we really need it to take effects.</span>
+
 # Storage
 
 ## Multiple robots can coexist on the table
@@ -15,8 +39,10 @@ One trade-off is that large sparse tables waste memory. In that case, using a Se
 ### Triple-state problem
 
 1. We should keep **Robot object** as the source of truth
+
 2. **Table.robots grid** is to check whether there is a collision
-3. **Table.robot_positions map** may seems unnecessary since Robot object itself already tracked its own position. But since we don't have a robot registry now. We may keep it at the moment. In the future,  we can use:
+
+3. **Table.robot_positions map** may seems unnecessary since Robot object itself already tracked its own position. But since we don't have a robot registry now. We may keep it at the moment. In the future, we can use:
 
    ```
    robot = RobotRegistry.get(uuid)
