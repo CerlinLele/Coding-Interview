@@ -17,12 +17,30 @@ robot1.execute("JUMP 3")  # robot1 tries to jump 3 steps north from (0,1)
 ```
 
 **A) Stop at the robot's position and fail (treat the robot like a wall)**\
-<span style="color: rgb(74, 158, 232);">I choose this one.</span>\
+<span style="color: rgb(74, 158, 232);">I choose this one.</span>
+
+<span style="color: rgb(74, 158, 232);">If JUMP only moves 2 steps out of 3 requested because it hit something, it should be considered as failure.</span>\
 B) Stop before the robot and succeed (stop at last valid position)\
 <span style="color: rgb(74, 158, 232);">We don't achieve enough steps, so it is cannot be considered as success.</span>\
 C) Skip over the robot and keep jumping (allow 'jumping over')
 
 <span style="color: rgb(74, 158, 232);">I don't prefer jump over at this moment, because since we set obstacles and collisions, we really need it to take effects.</span>
+
+Add a new method `jump(n)`
+
+- Check one cell ahead, we want move as far as we can until we are blocked.
+
+When I stop early, I will return\
+company\\REA Group\\pair-programming\\toy-robot\\[table.py](http://table.py) 
+
+```
+# check if the position is occupied by an obstacle
+elif self.obstacles[x][y] == 1:
+    message = "The position is occupied by an obstacle."
+# check if the position is occupied by another robot
+elif self.get_robot_by_position(x, y) is not None:
+    message = f"The position is occupied by another robot: {self.get_robot_by_position(x, y)}."
+```
 
 # Storage
 
