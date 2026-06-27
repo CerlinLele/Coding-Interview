@@ -25,7 +25,18 @@ if validation_result.get("success"):
     self.table.update_robot_grid(self.id, self.name, new_x, new_y)
 ```
 
-The check and the occupation are not atomic. Serial execution is fine, but under concurrency two robots could both pass `is_valid_position`, then both write into the same cell — the later write overwrites the earlier one, corrupting the grid state.
+The check and the occupation are **not atomic** — meaning these two steps are not an indivisible unit; something else can happen in between. Serial execution is fine because no one can interrupt. But under concurrency the gap becomes exploitable:
+
+```
+Robot A: check (2,3) → empty ✓
+                                    Robot B: check (2,3) → empty ✓  (A hasn't written yet)
+Robot A: occupy (2,3)
+                                    Robot B: occupy (2,3) ← overwrites A!
+```
+
+Both pass the check because the cell *was* empty at the moment each looked. But both then write into it — the later write overwrites the earlier one, corrupting the grid state.
+
+**Atomic** means "either the whole operation completes without interruption, or it doesn't happen at all" — like a database transaction. The fix is to make check + occupy a single locked unit so no other thread can slip in between (see `try_occupy` below).
 
 The same check-then-act gap exists in `place()`.
 
