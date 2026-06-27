@@ -55,48 +55,92 @@ Refactored in other executions also.
 
 I will choose 2d array to store the positions of multiple robots.
 
-- **At what point would you switch from 2D array to a Set-based approach?** What's your threshold? 10×10? 100×100? 1000×1000? And **how would you make that decision in code** — should it be automatic, or should the user specify it when creating a Table?
+- **At what point would you switch from 2D array to a Set-based approach?**
 
-  One trade-off is that large sparse tables waste memory. In that case, using a Set might be more suitable.
-  - Threshold: # of robots / # of grid over 50%: \
-    depend on the initial design and expection
-  - We may still choose 2d array instead of set, unless we are sure that the table will be sparse all the time.\
-    I may stick to it unless there is an issue. Both the storage will be `O(n*n)` , so I think it is ok.
+  I'll start with **2D array** because:
+  - Collision detection is O(1) — just check `grid[x][y]`
+  - Most practical cases (8×8, 10×10 boards) are small enough
+  - Implementation is straightforward
+  
+  Switch to **Set-based** when:
+  - Grid size > 100×100 **AND** robot count < 5% of grid size
+  - Example: A 1000×1000 map with only 50 robots → O(50) space vs O(1,000,000) for 2D array
+  - Memory savings: 1,000,000 cells × 8 bytes = 8MB vs 50 positions × 16 bytes = 0.8KB
+  
+  **Decision strategy:** Use a hybrid approach
+  ```python
+  table = Table(width=1000, height=1000, robot_capacity=50)
+  # Automatically picks Set if density < 5%, otherwise 2D array
+  ```
+  
+  For this toy robot project, stick with **2D array** — the grid is small enough that memory isn't a real concern, and the O(1) collision check is worth the simplicity.
 
 - **Table as source of truth** — If the table is tracking robot positions in a grid, but each robot also tracks its own `(x, y)`, how do you keep them in sync? What if they diverge?
 
-### Triple-state problem
-
-1. We should keep **Robot object** as the source of truth
-
-2. **Table.robots grid** is to check whether there is a collision
-
-3. **Table.robot_positions map** may seems unnecessary since Robot object itself already tracked its own position. But since we don't have a robot registry now. We may keep it at the moment. In the future, we can use:
-
-   ```
-   robot = RobotRegistry.get(uuid)
-   robot.x
-   robot.y
-   ```
+  I use a **"single source of truth"** pattern:
+  - **Robot object** holds the authoritative state: `(x, y, facing, move_count)`
+  - **Table.robots grid** is a cache for fast O(1) collision detection: `grid[x][y] = robot_id`
+  - **Table.robot_positions map** is a registry: `positions[robot_id] = (x, y, facing, move_count)`
+  
+  **Sync strategy:**
+  ```
+  When robot moves:
+    1. Update Robot.x, Robot.y (primary source)
+    2. Update Table.robots grid (cache)
+    3. Update Table.robot_positions map (registry)
+  
+  When reading state:
+    - Always read from Robot object, never from cache
+    - Cache/registry are sync'd immediately after every action
+  ```
+  
+  **If they diverge (bug):** The robot object is always correct. If the grid gets out of sync (e.g., due to a programming error), we can rebuild the grid from the robot objects:
+  ```python
+  def rebuild_grid(self):
+      self.robots = [[None] * self.width for _ in range(self.height)]
+      for robot in all_robots:
+          self.robots[robot.x][robot.y] = robot.id
+  ```
+  This keeps the design simple: one source of truth, two caches for performance.
 
 # Collision detection/handling
 
-- They can't occupy the same cell →They need collision detection/handling
+- They can't occupy the same cell → They need collision detection/handling
 
-  - **PLACE onto occupied cell** — In your `place()` method, you check `is_valid_position()` which now checks for other robots. But what's the expected behavior? Should PLACE fail silently if the cell is occupied, or should it return False and log something? \
-    I should keep it consistent for:
+  - **PLACE onto occupied cell** — In your `place()` method, you check `is_valid_position()` which now checks for other robots. But what's the expected behavior? Should PLACE fail silently if the cell is occupied, or should it return False and log something?
 
-    - `place()`
-    - `move()`
-    - `left()`
-    - `right()`
-    - `undo()`
+  **Unified return format for all commands:**
+  ```python
+  {
+    "success": bool,
+    "message": str,           # Explains why it failed or what happened
+    "position": (x, y, facing, move_count)  # Current state after action
+  }
+  ```
+  
+  - `place(0, 0, 'NORTH')` on occupied cell → `{"success": False, "message": "Cell (0,0) is occupied by Robot B", "position": None}`
+  - `move()` blocked by wall → `{"success": False, "message": "Cannot move: boundary at (5,0)", "position": (4, 0, 'NORTH', 5)}`
+  - `move()` succeeds → `{"success": True, "message": "Moved forward", "position": (5, 0, 'NORTH', 6)}`
+  
+  This keeps the caller informed: they see exactly what blocked them and the current state, so they can decide what to do next.
 
-    They return their own validation result because it's their responsibility to report blockers to the user, not silently fail without explanation. As for `report()`, we can stay as it is. Because we just need to print something, not a real execution.
+- **Robot identity** — You added `id` and `name` to each robot. Currently, we use them for identification since different robots may have the same name. UUIDs are used to track robot positions in the grid. When we want to return a detailed log message about which robot collided, we need the robot's name instead of just the UUID.
 
-- **Robot identity** — You added `id` and `name` to each robot. Currently, we use them for identification since different robots may have the same name. UUIDs are used to track robot positions in the grid. When we want to return a detailed log message about which robot collided, we need the robot's name instead of just the UUID. We may not want to use a registry pattern: Now we can just save `(uuid, name)` in the gird, and use it as the map key also.
-
-  - When the robots move, they will check whether there is an obstacle or another robot occupying the target cell (`robots[x][y]`).
+  **Design:**
+  - **id (UUID)**: Internal identifier for the Table to track positions in the grid. Not exposed to users.
+  - **name**: Human-readable label for messaging and debugging.
+  
+  **Implementation:**
+  ```python
+  grid[x][y] = robot.id  # Store UUID in grid for fast lookup
+  
+  # When collision happens, translate to user-friendly message:
+  blocked_robot = find_robot_by_id(grid[target_x][target_y])
+  return {"success": False, 
+          "message": f"Cannot move: blocked by {blocked_robot.name}"}
+  ```
+  
+  This gives us O(1) collision detection while keeping error messages readable. We don't need a separate registry yet — the Table can look up robot objects by iterating its robot list (for a small number of robots, this is fine; a registry pattern scales better for 100+ robots).
 
 # Robot
 
@@ -111,47 +155,64 @@ Each robot needs:
 
 ## Init
 
-Open-close & DI
+**Should the Table manage robot creation and lifecycle?**
 
-Right now robots are created externally:
-
+Option A: User creates robots, passes Table as dependency
 ```python
+table = Table(5, 5)
 robot1 = Robot(table, 'Robot 1')
 robot2 = Robot(table, 'Robot 2')
 ```
 
-Should the Table instead manage robot creation and registration? Like:
-
+Option B: Table creates and manages robots (factory pattern)
 ```python
 table = Table(5, 5)
 robot1 = table.create_robot('Robot 1')
 robot2 = table.create_robot('Robot 2')
-```
-
-And then you could do things like:
-
-```python
 all_robots = table.get_all_robots()
-robot = table.get_robot('Robot 1')
 ```
 
-I would like to keep my current approach. Robots are independent entities that use the table as a reference; they're not born from the table, and their lifecycle is not tied to it.
+**I choose Option A** because:
+- **Separation of concerns**: Robot and Table are independent entities; Table doesn't own robots
+- **Flexibility**: Robot doesn't have to be tied to the Table's lifetime. You can create robots before the table or share robots across tables
+- **Simplicity**: Fewer dependencies = fewer things to manage
+- **Use case fit**: This toy robot is command-driven, not complex enough to need a registry pattern
+
+For a larger system (e.g., multi-table simulation), Option B would make sense.
 
 ## Manage
 
-```python
-robot1.execute('PLACE 0,0,NORTH')
-robot2.execute('PLACE 1,1,EAST')
+**Grid update on every action:**
+
+When robot moves/rotates/undoes, we must keep Table.robots grid in sync:
+
+```
+Old position: grid[old_x][old_y] = None
+New position: grid[new_x][new_y] = robot_id
 ```
 
-When the robot is placed or the position is changed, the table needs to update the robots grid:
+**Undo behavior** — When `undo()` is called:
 
-1. empty the current position
-2. occupy the next position
+```python
+def undo(self):
+    if not self.history:
+        return {"success": False, "message": "No moves to undo"}
+    
+    # Get previous state
+    prev_x, prev_y, prev_facing, prev_move_count = self.history.pop()
+    
+    # Clear old position from grid
+    self.table.update_robot_grid(None, None, self.x, self.y)
+    self.table.update_robot_position(self.id, None)
+    
+    # Restore to previous state
+    self.x, self.y, self.facing, self.move_count = prev_x, prev_y, prev_facing, prev_move_count
+    
+    # Update grid with new position
+    self.table.update_robot_grid(self.id, self.name, self.x, self.y)
+    self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
+    
+    return {"success": True, "message": "Undo successful", "position": (self.x, self.y, self.facing, self.move_count)}
+```
 
-**Undo behavior** — When a robot calls `undo()`, the position is restored from history, but the `table.robots` grid isn't updated. So if robot1 was at (0,0), moved to (0,1), then undo — the grid still thinks robot1 is at (0,1). What happens then?
-
-We also need to consider undo:
-
-1. before: empty the current position
-2. after: reset back to previous position
+**Key insight:** History stores the **complete state** `(x, y, facing, move_count)`, not just position. This way, undo is atomic — one history entry = one reversible action, regardless of whether it was a move (which increments move_count) or a rotation (which doesn't).
