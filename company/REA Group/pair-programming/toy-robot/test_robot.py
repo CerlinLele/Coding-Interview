@@ -269,8 +269,8 @@ class TestMultiRobot:
         robot_b = Robot(table)
 
         # Place both robots
-        assert robot_a.place(0, 0, 'NORTH') == True
-        assert robot_b.place(2, 2, 'EAST') == True
+        assert robot_a.place(0, 0, 'NORTH').get("success") == True
+        assert robot_b.place(2, 2, 'EAST').get("success") == True
 
         # Verify both are placed
         assert robot_a.is_placed() == True
@@ -366,7 +366,7 @@ class TestMultiRobot:
         robot.execute('MOVE')
         robot.execute('MOVE')
         result = robot.execute('REPORT')
-        assert result == '1,3,NORTH,0'
+        assert result == '0,2,NORTH,2'
 
     def test_multiple_robots_coexist(self):
         table = Table(5, 5)

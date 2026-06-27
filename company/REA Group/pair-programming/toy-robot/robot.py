@@ -14,6 +14,7 @@ class Robot:
     def __init__(self, table, name="anonymous"):
         self.table = table
         self.id = uuid.uuid4()
+        self.robot_id = self.id  # Alias for compatibility
         self.name = name
         self.x = None
         self.y = None
@@ -37,7 +38,7 @@ class Robot:
         validation_result = self.table.is_valid_position(x, y)
         if not validation_result.get("success"):
             return validation_result
-        
+
         self.x = x
         self.y = y
         self.facing = facing
@@ -45,43 +46,18 @@ class Robot:
         self.table.update_robot_grid(self.id, self.name, x, y)
         self.table.update_robot_position(self.id, (x, y, facing, self.move_count))
 
-        return validation_result
+        return {"success": True, "message": "The position is valid."}
     
     def move(self, direction="forward"):
         """Move the robot one unit forward in the direction it's facing."""
 
-    def _move_to(self, new_x, new_y):
-        """Helper: Move to new position and update table tracking.
-
-        This implements design decision 3.2: Robot calls table.update_robot_position()
-        """
-        old_pos = (self.x, self.y)
-        new_pos = (new_x, new_y)
-
-        # Update table tracking
-        self.table.update_robot_position(old_pos, new_pos, self.robot_id)
-
-        # Save history
-        self.history.append((self.x, self.y, self.facing))
-
-        # Update own state
-        self.x = new_x
-        self.y = new_y
-        self.move_count += 1
-
-    def move(self):
-        """Move the robot one unit forward in the direction it's facing.
-
-        Design decision 2.1: Collision detection inside Table.is_valid_position()
-        Design decision 2.2: Return dict with details
-        """
         if not self.is_placed():
             return {"success": False, "message": "Robot is not placed on the table."}
-        
+
         dx, dy = self.DIRECTION_DELTAS[self.facing]
         if direction == "backward":
             dx, dy = -dx, -dy
-        
+
         new_x = self.x + dx
         new_y = self.y + dy
 
@@ -99,8 +75,12 @@ class Robot:
 
             self.table.update_robot_grid(self.id, self.name, new_x, new_y)
             self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
-        
+
         return validation_result
+
+    def backward(self):
+        """Move the robot one unit backward (opposite to the direction it's facing)."""
+        return self.move(direction="backward")
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
