@@ -192,7 +192,130 @@ print(valid_dict[frozenset([1, 2])])  # 'value'
 
 ---
 
-## 列表（常用于历史记录、状态栈）
+## 队列（Queue）和 栈（Stack）
+
+### Stack（栈）- LIFO（后进先出）
+
+```python
+# 使用 List 实现 stack
+stack = []
+
+# 入栈（push）
+stack.append(1)
+stack.append(2)
+stack.append(3)
+
+# 出栈（pop）- 返回最后一个元素
+top = stack.pop()  # 3
+print(stack)  # [1, 2]
+
+# 查看栈顶（不弹出）
+if stack:
+    top = stack[-1]  # 2
+
+# 检查是否为空
+if not stack:
+    print("Stack is empty")
+```
+
+**Toy Robot 应用：UNDO 历史记录**
+```python
+class Robot:
+    def __init__(self):
+        self.history = []  # Stack
+    
+    def execute_command(self, command):
+        # 执行命令...
+        self.history.append((self.x, self.y, self.facing))  # 记录状态
+    
+    def undo(self):
+        """撤销最后一条命令"""
+        if self.history:
+            self.x, self.y, self.facing = self.history.pop()
+        else:
+            print("No history to undo")
+```
+
+### Queue（队列）- FIFO（先进先出）
+
+```python
+from collections import deque
+
+# 使用 deque 实现 queue（比 list 更高效）
+queue = deque()
+
+# 入队（enqueue）
+queue.append(1)
+queue.append(2)
+queue.append(3)
+
+# 出队（dequeue）- 返回第一个元素
+first = queue.popleft()  # 1
+print(queue)  # deque([2, 3])
+
+# 查看队首（不弹出）
+if queue:
+    front = queue[0]  # 2
+
+# 检查是否为空
+if not queue:
+    print("Queue is empty")
+```
+
+**为什么用 deque 而不是 list？**
+
+```python
+import time
+
+# List 的 pop(0) 很慢 - O(n)
+my_list = list(range(100000))
+start = time.time()
+for _ in range(1000):
+    my_list.pop(0)
+print(f"List time: {time.time() - start:.4f}s")  # 比较慢
+
+# deque 的 popleft() 很快 - O(1)
+my_deque = deque(range(100000))
+start = time.time()
+for _ in range(1000):
+    my_deque.popleft()
+print(f"Deque time: {time.time() - start:.4f}s")  # 快很多
+```
+
+**Queue 应用示例：命令队列**
+```python
+from collections import deque
+
+class CommandProcessor:
+    def __init__(self):
+        self.command_queue = deque()
+    
+    def enqueue_command(self, command):
+        """添加命令到队列"""
+        self.command_queue.append(command)
+    
+    def process_commands(self):
+        """按顺序处理命令"""
+        while self.command_queue:
+            command = self.command_queue.popleft()
+            self.execute(command)
+    
+    def execute(self, command):
+        print(f"Executing: {command}")
+```
+
+**Stack vs Queue 对比**
+
+| 特性 | Stack | Queue |
+|------|-------|-------|
+| 顺序 | LIFO (后进先出) | FIFO (先进先出) |
+| 入操作 | append() | append() |
+| 出操作 | pop() | popleft() (用deque) |
+| 用途 | UNDO、函数调用栈、表达式解析 | 任务队列、广度优先搜索 |
+| Python 实现 | list | collections.deque |
+
+---
+
 
 ```python
 # 定义
