@@ -244,12 +244,12 @@ from collections import deque
 # 使用 deque 实现 queue（比 list 更高效）
 queue = deque()
 
-# 入队（enqueue）
+# 入队（enqueue）- 从右端添加
 queue.append(1)
 queue.append(2)
 queue.append(3)
 
-# 出队（dequeue）- 返回第一个元素
+# 出队（dequeue）- 从左端移除
 first = queue.popleft()  # 1
 print(queue)  # deque([2, 3])
 
@@ -261,6 +261,77 @@ if queue:
 if not queue:
     print("Queue is empty")
 ```
+
+**Deque 双端操作 - 左右都可以增删**
+
+```python
+from collections import deque
+
+d = deque([2, 3, 4])
+
+# ========== 右端操作 ==========
+d.append(5)           # 从右端添加 → [2, 3, 4, 5]
+d.pop()               # 从右端移除 → [2, 3, 4]
+
+# ========== 左端操作 ==========
+d.appendleft(1)       # 从左端添加 → [1, 2, 3, 4]
+d.popleft()           # 从左端移除 → [2, 3, 4]
+
+# ========== 快速查看两端 ==========
+d = deque([1, 2, 3])
+print(d[0])           # 2 (左端 / 队首)
+print(d[-1])          # 3 (右端 / 队尾)
+
+# ========== 旋转 ==========
+d = deque([1, 2, 3, 4, 5])
+d.rotate(2)           # 向右旋转 2 位 → [4, 5, 1, 2, 3]
+d.rotate(-1)          # 向左旋转 1 位 → [5, 1, 2, 3, 4]
+```
+
+**使用场景对比**
+
+```python
+from collections import deque
+
+# ========== 标准 Queue（FIFO）==========
+# append() 右端进，popleft() 左端出
+queue = deque()
+queue.append(1)       # 进
+queue.append(2)
+queue.append(3)
+print(queue.popleft())  # 1 出（先进先出）
+
+# ========== 标准 Stack（LIFO）==========
+# append() 右端进，pop() 右端出
+stack = deque()
+stack.append(1)       # 进
+stack.append(2)
+stack.append(3)
+print(stack.pop())     # 3 出（后进先出）
+
+# ========== 双端队列（可从两端进出）==========
+deq = deque()
+deq.append(2)         # 右端进 → [2]
+deq.appendleft(1)     # 左端进 → [1, 2]
+deq.append(3)         # 右端进 → [1, 2, 3]
+print(deq.popleft())  # 1 左端出
+print(deq.pop())      # 3 右端出
+```
+
+**Deque 完整 API**
+
+| 方法 | 说明 | 时间复杂度 |
+|------|------|---------|
+| `append(x)` | 右端添加 | O(1) |
+| `pop()` | 右端移除 | O(1) |
+| `appendleft(x)` | 左端添加 | O(1) |
+| `popleft()` | 左端移除 | O(1) |
+| `rotate(n)` | 旋转 n 位 | O(k) |
+| `extend(iterable)` | 右端批量添加 | O(k) |
+| `extendleft(iterable)` | 左端批量添加 | O(k) |
+| `clear()` | 清空 | O(1) |
+| `copy()` | 浅拷贝 | O(n) |
+
 
 **为什么用 deque 而不是 list？**
 
