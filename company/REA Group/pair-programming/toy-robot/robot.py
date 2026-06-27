@@ -46,7 +46,11 @@ class Robot:
         self.table.update_robot_grid(self.id, self.name, x, y)
         self.table.update_robot_position(self.id, (x, y, facing, self.move_count))
 
-        return {"success": True, "message": "The position is valid."}
+        return {
+            "success": True, 
+            "message": "Robot is placed successfully",
+            "position": (self.x, self.y, self.facing, self.move_count)
+        }
     
     def move(self, direction="forward"):
         """Move the robot one unit forward in the direction it's facing."""
@@ -64,7 +68,7 @@ class Robot:
         validation_result = self.table.is_valid_position(new_x, new_y)
 
         if validation_result.get("success"):
-            self.history.append((self.x, self.y, self.facing))
+            self.history.append((self.x, self.y, self.facing, self.move_count))
 
             self.table.update_robot_grid(None, None, self.x, self.y)
             self.table.update_robot_position(self.id, None)
@@ -76,33 +80,88 @@ class Robot:
             self.table.update_robot_grid(self.id, self.name, new_x, new_y)
             self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
 
+        validation_result["message"] = f"Moved {direction} successfully"
+        validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
+
         return validation_result
 
     def backward(self):
         """Move the robot one unit backward (opposite to the direction it's facing)."""
         return self.move(direction="backward")
+
+    def jump(self, steps):
+        """Jump forward N steps. Stop if blocked by boundary, obstacle, or robot."""
+        if not self.is_placed():
+            return {"success": False, "message": "Robot is not placed on the table."}
+
+        start_x, start_y, start_move_count = self.x, self.y, self.move_count
+        dx, dy = self.DIRECTION_DELTAS[self.facing]
+
+        for i in range(steps):
+            new_x = self.x + dx
+            new_y = self.y + dy
+
+            # 1. Check each cell one at a time
+            validation_result = self.table.is_valid_position(new_x, new_y)
+
+            # 2. Stop when blocked
+            if not validation_result.get("success"):
+
+                # 4. Track history
+                if i > 0:
+                    self.history.append((start_x, start_y, self.facing, start_move_count))
+
+                validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
+                return validation_result
+
+            # 3. Update the grid if you actually move
+            self.table.update_robot_grid(None, None, self.x, self.y)
+            self.table.update_robot_position(self.id, None)
+
+            self.x = new_x
+            self.y = new_y
+
+            self.move_count += 1
+
+            self.table.update_robot_grid(self.id, self.name, new_x, new_y)
+            self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
+
+        # 5. Return consistent format
+        return {
+            "success": True,
+            "message": f"Jump {steps} steps successfully",
+            "position": (self.x, self.y, self.facing, self.move_count)
+        }   
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
         if not self.is_placed():
             return {"success": False, "message": "Robot is not placed on the table."}
 
-        self.history.append((self.x, self.y, self.facing))
+        self.history.append((self.x, self.y, self.facing, self.move_count))
 
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index - 1) % 4]
-        return {"success": True, "message": "Rotated 90 degrees to the left."}
+        return {
+            "success": True, 
+            "message": "Rotated 90 degrees to the left.",
+            "position": (self.x, self.y, self.facing, self.move_count)
+        }
     
     def right(self):
         """Rotate the robot 90 degrees to the right."""
         if not self.is_placed():
             return {"success": False, "message": "Robot is not placed on the table."}
 
-        self.history.append((self.x, self.y, self.facing))
+        self.history.append((self.x, self.y, self.facing, self.move_count))
 
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
-        return {"success": True, "message": "Rotated to the right."}
+        return {
+            "success": True, 
+            "message": "Rotated to the right.",
+            "position": (self.x, self.y, self.facing, self.move_count)
+        }
 
     def undo(self):
         """Undo the last command (per-robot UNDO).
@@ -116,17 +175,20 @@ class Robot:
         if current_state[2] == self.facing:
             if self.move_count <= 0:
                 return {"success": False, "message": "No moves to undo."}
-            self.move_count -= 1
 
         self.table.update_robot_grid(None, None, self.x, self.y)
         self.table.update_robot_position(self.id, None)
 
-        self.x, self.y, self.facing = current_state
+        self.x, self.y, self.facing, self.move_count = current_state
 
         self.table.update_robot_grid(self.id, self.name, self.x, self.y)
         self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
         
-        return {"success": True, "message": "Last command has been undone."}
+        return {
+            "success": True, 
+            "message": "Last command has been undone.",
+            "position": (self.x, self.y, self.facing, self.move_count)
+        }
     
     def report(self):
         """Return the current position and facing direction."""
@@ -152,7 +214,7 @@ class Robot:
                 x = int(coords_and_facing[0])
                 y = int(coords_and_facing[1])
                 facing = coords_and_facing[2]
-                
+
                 return self.place(x, y, facing)
             except (ValueError, IndexError):
                 return None
@@ -162,16 +224,26 @@ class Robot:
 
         elif command == 'BACKWARD':
             return self.move(direction="backward")
-        
+
+        elif command.startswith('JUMP'):
+            parts = command.split()
+            if len(parts) != 2:
+                return None
+            try:
+                steps = int(parts[1])
+                return self.jump(steps)
+            except (ValueError, IndexError):
+                return None
+
         elif command == 'LEFT':
             return self.left()
-        
+
         elif command == 'RIGHT':
             return self.right()
-        
+
         elif command == 'REPORT':
             return self.report()
-        
+
         elif command == 'UNDO':
             return self.undo()
 

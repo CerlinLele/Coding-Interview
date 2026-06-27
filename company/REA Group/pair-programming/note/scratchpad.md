@@ -30,20 +30,24 @@ Add a new method `jump(n)`
 
 - Check one cell ahead, we want move as far as we can until we are blocked.
 
-When I stop early, I will return\
-company\\REA Group\\pair-programming\\toy-robot\\[table.py](http://table.py)
+When I stop early, I will return
 
 ```
-# check if the position is occupied by an obstacle
-elif self.obstacles[x][y] == 1:
-    message = "The position is occupied by an obstacle."
-# check if the position is occupied by another robot
-elif self.get_robot_by_position(x, y) is not None:
-    message = f"The position is occupied by another robot: {self.get_robot_by_position(x, y)}."
+{
+  "success": False,
+  "message": "The position is occupied by another robot: {robot_info}" | "The position is occupied by an obstacle.",
+  "position: (x, y, facing, move_count)
+}
 ```
+
+The user may also want to know about where we are at after this execution. So I will also include position in return object.\
+Refactored in other executions also.
+
+If we
 
 1. At the beginning, I thought `jump(n)` means `move()` n steps. But then I realized the history track is different. `jump(n)` will be considered as only one record in the history. But every move will have one record.
-2. For the calculation of `move_count` , I may choose atomic operation instead of all or nothing. Because previously we decided that we can reach to the fareast as we can. So it actually **moved**. If we choose all-or-nothing, it seems like we stay at the start point.
+2. For the calculation of `move_count` , I may choose atomic operation instead of all or nothing. Because previously we decided that we can reach to the fareast as we can. So it actually **moved**. If we choose all-or-nothing, it seems like we stay at the start point.\
+   Now we also need to save `move_count` into the history for `undo()` . Because undo may not just decrease move_count by 1 this time.
 
 # Storage
 

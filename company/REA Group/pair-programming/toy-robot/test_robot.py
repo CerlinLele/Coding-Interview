@@ -409,3 +409,25 @@ class TestMultiRobot:
         robot.execute('MOVE')
         result = table.get_robot_position(robot.id)
         assert result == '0,1,NORTH,1'
+
+    def test_jump_blocked_by_another_robot(self):
+        # Setup
+        table = Table(5, 5)
+        robot1 = Robot(table, "Robot A")
+        robot2 = Robot(table, "Robot B")
+
+        # Initial state
+        robot1.execute("PLACE 0,0,NORTH")  # Robot A at (0,0), facing NORTH
+        robot2.execute("PLACE 0,3,NORTH")  # Robot B at (0,3), facing NORTH
+
+        # Attempt JUMP 5 from (0,0) going NORTH
+        # Path: (0,1) → (0,2) → (0,3)[BLOCKED by robot2] → STOP
+        result = robot1.execute("JUMP 5")
+        assert result.get("success") == False
+        assert result.get("position") == (0, 2, 'NORTH', 2)
+
+        # Now test UNDO
+        robot1.execute("UNDO")
+        result = robot1.report()
+        assert result == '0,0,NORTH,0'
+
