@@ -275,21 +275,84 @@ elif command == 'BACKWARD':
 
 ### 实现进度
 
-- ✓ 机器人标识（id, name）
+**第一阶段：基础多机器人支持**
+
+- ✓ 机器人标识（UUID + 名字）
 - ✓ 2D 网格追踪位置
 - ✓ 碰撞检测和错误消息
 - ✓ 网格在 place/move/backward/undo 中同步
-- ✓ 命令返回格式标准化（所有命令返回字典）
-- ⏳ 待决：UUID 必要性、Table 是否应管理机器人生命周期
+
+**第二阶段：命令返回格式标准化**
+
+- ✓ 所有命令返回 `{"success": bool, "message": str}`
+- ✓ place() 返回详细验证结果
+- ✓ move() 返回详细验证结果  
+- ✓ left() 返回一致的字典格式
+- ✓ right() 返回一致的字典格式
+- ✓ undo() 返回一致的字典格式
+
+**第三阶段：错误消息优化**
+
+- ✓ 网格存储 (uuid, name) 元组而不是单独 UUID
+- ✓ 碰撞错误消息显示机器人名字而不是 UUID
+- ✓ 避免使用 Registry 模式，保持架构简洁
+
+**第四阶段：位置追踪与查询**
+
+- ✓ 引入 robot_positions 映射（UUID → 完整状态）
+- ✓ 提供 update_robot_grid(uuid, name, x, y) 原子操作
+- ✓ 提供 update_robot_position(uuid, position) 追踪
+- ✓ 提供 get_robot_position(uuid) 查询接口
+
+### 设计决策与权衡
+
+| 问题 | 决策 | 理由 |
+|------|------|------|
+| UUID vs name | 两者都需要 | UUID 用于索引和持久化，name 用于用户消息 |
+| 网格内容 | (uuid, name) 元组 | 避免外部 Registry，错误消息自包含 |
+| robot_positions map 必要性 | 必要 | 允许通过 UUID 查询完整状态（未来持久化、序列化） |
+| 网格更新原子性 | 多处调用更新方法 | place/move/undo 时同步更新网格和状态映射 |
+| 错误消息格式 | 字典 `{"success": bool, "message": str}` | 所有命令一致，易于客户端处理 |
+
+### 待解决的架构问题
+
+- **Triple-state 问题**：Robot 持有 (x, y, facing, move_count)，Table.robots 网格持有 UUID，Table.robot_positions 持有完整状态。是否所有三个都必要？
+- **Table 责任**：Table 是否应管理机器人生命周期，还是仅作为环境？当前设计：Robot 独立存在，Table 只是共享空间。
+- **可扩展性**：2D 数组适合小表格；何时切换到 Set/Hash 结构？
+- **并发**：多个机器人同时移动时的竞态条件？
+- **机器人移除**：如何实现机器人离开表格？这会如何影响 UUID 和位置追踪？
 
 ---
 
 ## 测试覆盖
 
-最终 37 个测试全部通过，覆盖：
-- 基础命令（PLACE / MOVE / LEFT / RIGHT / REPORT）
-- BACKWARD（正常移动、边界阻止）
-- UNDO（单次、多次、超出历史、failed move 后撤销）
-- MOVE_COUNT（移动计数、旋转不计、失败不计、UNDO 回退）
-- Obstacle（MOVE 和 BACKWARD 被障碍物阻止）
+最终 **41 个测试**全部通过，覆盖：
+
+**基础功能（13 个）**
+- 位置验证（有效/无效）
+- 机器人初始状态
+- 放置命令（有效位置、无效位置、无效方向）
+- 基本报告
+
+**移动与旋转（14 个）**
+- MOVE 命令（四个方向、边界阻止）
+- LEFT/RIGHT 旋转（完整旋转周期）
+- BACKWARD 命令（正向移动、边界阻止）
+- 无放置时执行命令
+
+**撤销与计数（12 个）**
+- UNDO（单次、多次、超出历史）
+- Move count 追踪（递增、旋转不计、失败不计）
+- UNDO 回退 count（仅移动时减少）
+- 失败操作不递增 count
+
+**多机器人与碰撞（2 个）**
 - 多机器人共存
+- 碰撞检测（机器人间碰撞阻止移动）
+
+**障碍物（2 个）**
+- MOVE 被障碍物阻止
+- BACKWARD 被障碍物阻止
+
+**位置查询（1 个）**
+- Table 通过 UUID 追踪和查询机器人位置
