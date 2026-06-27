@@ -278,19 +278,26 @@ elif command == 'BACKWARD':
 
 ### JUMP 命令
 
-机器人向前跳跃 N 步。每一步都检查是否被阻挡（边界、障碍物、其他机器人），一旦被阻挡就停止。停止时如果没有走完 N 步则失败。
+机器人向前跳跃 N 步。每一步都检查是否被阻挡（边界、障碍物、其他机器人），一旦被阻挡就停止。**尽可能多地走**，即使走不满 N 步也不会回退。
 
 **设计决策**：
 | 问题 | 决策 | 理由 |
 |------|------|------|
-| 如何处理阻挡？ | 失败 (all-or-nothing) | 如果只能走 2 步但要求 3 步，应报错；不是走 2 步后成功 |
-| move_count 如何更新？ | 原子递增 N 次 | jump 虽然是一条命令，但实际移动了 N 步，所以 move_count 增加 N |
-| 历史如何记录？ | 记录起始状态，只有 1 条历史记录 | jump 是单条命令，undo 一次回到起始点 |
+| 如何处理阻挡？ | 尽可能走最远 (partial success) | 如果能走 2 步但要求 3 步，走完 2 步停止；不强制全部或全无 |
+| success 的含义？ | 完成了全部 N 步 | 走完所有步数返回 True；中途被阻挡返回 False 但位置已更新 |
+| 位置在哪？ | 最后能走到的位置 | 即使失败也在最后成功的位置上 |
+| move_count 如何更新？ | 实际走过的步数 | 走 2 步就 +2，不管是否完成全部 N 步请求 |
+| 历史如何记录？ | 起始状态，只有 1 条记录 | jump 是单条命令，undo 一次回到起始点，不管走了多少步 |
 | 返回值？ | 统一格式 `{"success": bool, "message": str, "position": ...}` | 与其他命令保持一致 |
+
+**示例**：
+- JUMP 5 从 (0,0) NORTH，路径正常：成功到达 (0,5)，`success=True`
+- JUMP 5 从 (0,0) NORTH，第 3 步被阻挡：走到 (0,2)，`success=False`，`position=(0,2, 'NORTH', 2)`
+- UNDO 后：回到 (0,0)，`move_count=0`
 
 ```python
 def jump(self, steps):
-    """Jump forward N steps. Stop if blocked by boundary, obstacle, or robot."""
+    """Jump forward N steps. Stop if blocked. Undo restores starting point."""
     if not self.is_placed():
         return {"success": False, "message": "Robot is not placed on the table."}
     
@@ -305,10 +312,11 @@ def jump(self, steps):
         validation_result = self.table.is_valid_position(new_x, new_y)
         
         if not validation_result.get("success"):
-            # 被阻挡，保存起始点到历史，返回失败
+            # 被阻挡，已走的步数 > 0，保存起始点到历史
             if i > 0:
                 self.history.append((start_x, start_y, self.facing, start_move_count))
             
+            # 返回失败，但返回当前位置（已走过的最后位置）
             validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
             return validation_result
         
@@ -325,7 +333,7 @@ def jump(self, steps):
         self.table.update_robot_grid(self.id, self.name, new_x, new_y)
         self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
     
-    # 成功完成所有步数：保存起始状态到历史
+    # 成功完成所有 N 步：保存起始状态到历史
     self.history.append((start_x, start_y, self.facing, start_move_count))
     
     return {
@@ -336,9 +344,10 @@ def jump(self, steps):
 ```
 
 **关键设计点**：
-- **All-or-nothing**：要跳 3 步但中途被阻挡 → 失败，返回到起始点
-- **原子历史记录**：只有起始点存一条记录，使得 undo 能一次性回退
-- **move_count 正确累加**：跳 3 步就 +3，不是 +1
+- **尽可能走最远**：中途被阻挡时，保留已走过的位置，不回退
+- **success 标志含义明确**：完成全部 N 步 → True；中途被阻挡 → False
+- **原子历史记录**：只在起始点记一条，undo 一次回到起始点（不管走了多少步）
+- **move_count 准确追踪**：实际走过的步数加到计数中
 
 ---
 
@@ -432,7 +441,7 @@ def is_valid_position(self, x, y):
 | 2D 数组 vs Set | 2D 数组 | O(1) 碰撞检测；5×5 小表适合密集表示 |
 | Robot vs Table 谁是权威 | Robot 对象 | 状态应在一个地方；Table 仅作缓存 |
 | 历史记录什么 | (x, y, facing, move_count) 四元组 | undo 需要完整恢复，包括 move_count |
-| JUMP 如何处理中途阻挡 | 失败 (all-or-nothing) | 完成所有步数才能算成功 |
+| JUMP 如何处理中途阻挡 | 尽可能走最远 (partial success) | 走到哪里就停到哪里；undo 一次回到起始点 |
 | 返回值格式 | 统一字典 + position | 客户端统一处理；position 帮助调试 |
 | Robot 生命周期管理 | 用户负责 (Option A) | 简洁设计，Robot/Table 解耦；未来可升级为 Table 工厂 |
 
@@ -832,25 +841,60 @@ robot = table.get_robot_by_name('Robot 1')
 
 **问题**：JUMP 5 步但第 3 步被阻挡，是否接受部分移动？
 
-**决策**：All-or-nothing，返回失败
+**决策**：Partial success（尽可能走最远）
 
-**理由**：
-- 用户请求 JUMP 5，期望要么成功 5 步，要么失败
-- 部分成功容易导致状态模糊：move_count +2 但消息说"失败"
-- 如果需要"尽量多步"，用户可循环调用 MOVE
+**设计**：
+- JUMP 请求 5 步，实际只能走 3 步（第 4 步被阻挡）
+- **位置更新**：停留在能走到的最后位置（第 3 步位置）
+- **move_count 更新**：+3（实际走过的步数）
+- **success 标志**：False（未完成全部 5 步）
+- **历史记录**：只记起始状态一条，UNDO 一次回到 (start_x, start_y)
 
-**实现**：
+**代码实现**：
 ```python
 for i in range(steps):
+    new_x, new_y = calculate_next_step()
+    
     if not is_valid(new_x, new_y):
-        # 失败：保存起始状态到历史，UNDO 后恢复到原点
-        self.history.append((start_x, start_y, self.facing, start_move_count))
-        return {"success": False, ...}
-
-# 成功：才保存到历史
-self.history.append((start_x, start_y, self.facing, start_move_count))
-return {"success": True, ...}
+        # 被阻挡：已走的步数 > 0，保存起始状态
+        if i > 0:
+            self.history.append((start_x, start_y, self.facing, start_move_count))
+        
+        # 返回失败，但返回当前位置（已走过的最后位置）
+        return {
+            "success": False,
+            "message": "...",
+            "position": (self.x, self.y, self.facing, self.move_count)  # ← 已走过的位置
+        }
+    
+    # 继续走
+    self.x, self.y = new_x, new_y
+    self.move_count += 1
 ```
+
+**示例**：
+```
+robot1 at (0,0), robot2 at (0,3)
+JUMP 5 from (0,0) NORTH
+
+Step 1: (0,1) ✓ move_count=1
+Step 2: (0,2) ✓ move_count=2
+Step 3: (0,3) ✗ blocked by robot2
+
+Result: {
+    "success": False,
+    "message": "The position is occupied by another robot",
+    "position": (0, 2, 'NORTH', 2)
+}
+
+UNDO 后：回到 (0,0), move_count=0
+```
+
+**理由**：
+- **用户体验**：用户不会因为最后一步失败而失去前面走过的进度
+- **状态准确**：move_count 和 position 总是同步的，反映真实移动
+- **UNDO 语义清晰**：一条 JUMP 命令，一条历史记录，UNDO 一次完全回退
+- **与 MOVE 一致**：MOVE 不会因为某个方向被阻挡而失败；类似地，JUMP 走到哪里就停到哪里
 
 ---
 
