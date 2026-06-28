@@ -180,6 +180,18 @@ result = robot1.execute("PUSH 1")
 # {"success": False, "message": "Cannot push: Robot B blocked by wall", ...}
 ```
 
+`undo()` after push: 
+
+```python
+robot_a.execute("PLACE 0,0,NORTH")
+robot_b.execute("PLACE 0,1,NORTH")
+robot_a.execute("PUSH 1")
+
+robot_a.execute("UNDO")
+```
+
+I think each robot will only manage its own history. If robot_a is executed with undo, only robot_a will go back. robot_b won't go back unless it is also undone.
+
 # Robot
 
 - Consider how robots are created, managed, and identified
