@@ -239,26 +239,18 @@ class Robot:
         if not self.history:
             return {"success": False, "message": "No history to undo."}
         
-        current_state = self.history.pop()
-        if current_state[2] == self.facing:
-            if self.move_count <= 0:
-                return {"success": False, "message": "No moves to undo."}
+        prev_state = self.history.pop()
+        x, y, facing, move_count, affected_robots = prev_state
+
+        validation_result = self.table.is_valid_position(x, y)
+        if not validation_result.get("success") and facing == self.facing and self.move_count - move_count >= 1:
+            self.append_history(x, y, facing, move_count, affected_robots)
+            validation_result["message"] = "The position is occupied by another robot."
+            validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
+            return validation_result
 
         self.table.update_robot_grid(None, None, self.x, self.y)
-
-        self.x, self.y, self.facing, self.move_count, affected_robots = current_state
-
-        for robot_id in affected_robots:
-            robot = self.table.get_robot_by_id(robot_id)
-
-            affected_state = robot.history.pop()
-            
-            robot.table.update_robot_grid(None, None, robot.x, robot.y)
-
-            robot.x, robot.y, robot.facing, robot.move_count = affected_state[:4]
-
-            robot.table.update_robot_grid(robot.id, robot.name, robot.x, robot.y)
-
+        self.x, self.y, self.facing, self.move_count = x, y, facing, move_count
         self.table.update_robot_grid(self.id, self.name, self.x, self.y)
         
         return {

@@ -197,11 +197,9 @@ robot_a.execute("PUSH 1")
 robot_a.execute("UNDO")
 ```
 
-- PUSH is a single atomic operation affecting both robots
-  - I will also include affected robots in history
-- `robot_a.undo()` restores **both** robot_a and robot_b
-  - When we undo a, we will know that we have affected b previously. So we also need to undo b
-- Result: Both return to pre-PUSH state ✓ Consistent
+- PUSH cannot be a single atomic operation affecting both robots
+  - Because robot b is not always in sync with robot a
+  - After this push, we don't know what will happen to them. So they cannot undo push together.
 
 ## Robot
 
