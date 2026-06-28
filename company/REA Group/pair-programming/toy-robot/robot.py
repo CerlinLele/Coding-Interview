@@ -44,6 +44,7 @@ class Robot:
         self.facing = facing
 
         self.table.update_robot_grid(self.id, self.name, x, y)
+        self.table.register_robot(self.id, self)
         self.table.update_robot_position(self.id, (x, y, facing, self.move_count))
 
         return {

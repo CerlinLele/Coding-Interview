@@ -223,13 +223,9 @@ For a larger system (e.g., multi-table simulation), Option B would make sense.
 
 ### Robot Registry
 
-Now we may need a robot registry to manage robot. I don't want to bind the life cycle of the robots with a table.
+`Table.robot_registry = {uuid: Robot}`
 
-```
-robotRegistry = RobotRegistry()
-uuid = robotRegistry.create_robot(name)
-robot = robotRegistry.get_by_id(uuid)
-```
+Currently I will add this registry with robot. When a robot is placed on a table, it will be registered with this table. So that the table can track the whole `Robot` object.
 
 ## Manage
 

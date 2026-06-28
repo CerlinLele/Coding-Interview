@@ -16,7 +16,19 @@ class Table:
         self.robots = [[None for _ in range(width)] for _ in range(height)]
 
         # initialize robot positions
+        # Will be deprecated in the future
         self.robot_positions = {}
+
+        # initialize robot registry {uuid:  Robot object}
+        self.robot_registry = {}
+
+    def register_robot(self, uuid, robot):
+        """Register a robot by uuid."""
+        self.robot_registry[uuid] = robot
+
+    def get_robot_by_id(self, uuid):
+        """Get a robot by uuid."""
+        return self.robot_registry.get(uuid)
 
     def update_robot_grid(self, uuid, name, x, y):
         """Update the robot grid by uuid."""
