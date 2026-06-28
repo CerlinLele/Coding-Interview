@@ -190,7 +190,11 @@ robot_a.execute("PUSH 1")
 robot_a.execute("UNDO")
 ```
 
-I think each robot will only manage its own history. If robot_a is executed with undo, only robot_a will go back. robot_b won't go back unless it is also undone.
+- PUSH is a single atomic operation affecting both robots
+  - I will also include affected robots in history
+- `robot_a.undo()` restores **both** robot_a and robot_b
+  - When we undo a, we will know that we have affected b previously. So we also need to undo b
+- Result: Both return to pre-PUSH state ✓ Consistent
 
 # Robot
 

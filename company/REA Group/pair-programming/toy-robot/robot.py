@@ -26,7 +26,7 @@ class Robot:
         """Check if the robot has been placed on the table."""
         return self.x is not None and self.y is not None and self.facing is not None
 
-    def append_history(self, x=None, y=None, facing=None, move_count=None):
+    def append_history(self, x=None, y=None, facing=None, move_count=None, affected_robots = None):
         """Append a history entry."""
         if x is None:
             x = self.x
@@ -36,7 +36,9 @@ class Robot:
             facing = self.facing
         if move_count is None:
             move_count = self.move_count
-        self.history.append((x, y, facing, move_count))
+        if affected_robots is None:
+            affected_robots = []
+        self.history.append((x, y, facing, move_count, affected_robots))
 
     def place(self, x, y, facing):
         """Place the robot at position (x, y) facing a direction.
@@ -81,7 +83,7 @@ class Robot:
         validation_result = self.table.is_valid_position(new_x, new_y)
 
         if validation_result.get("success"):
-            self.history.append((self.x, self.y, self.facing, self.move_count))
+            self.append_history()
 
             self.table.update_robot_grid(None, None, self.x, self.y)
             self.table.update_robot_position(self.id, None)
@@ -122,7 +124,7 @@ class Robot:
 
                 # 4. Track history
                 if i > 0:
-                    self.history.append((start_x, start_y, self.facing, start_move_count))
+                    self.append_history(start_x, start_y, self.facing, start_move_count)
 
                 validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
                 return validation_result
@@ -226,7 +228,7 @@ class Robot:
         if not self.is_placed():
             return {"success": False, "message": "Robot is not placed on the table."}
 
-        self.history.append((self.x, self.y, self.facing, self.move_count))
+        self.append_history()
 
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index - 1) % 4]
@@ -241,7 +243,7 @@ class Robot:
         if not self.is_placed():
             return {"success": False, "message": "Robot is not placed on the table."}
 
-        self.history.append((self.x, self.y, self.facing, self.move_count))
+        self.append_history()
 
         current_index = self.DIRECTIONS.index(self.facing)
         self.facing = self.DIRECTIONS[(current_index + 1) % 4]
