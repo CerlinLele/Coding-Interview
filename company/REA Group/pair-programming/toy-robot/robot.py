@@ -184,11 +184,9 @@ class Robot:
             next_validation_result = self.table.is_valid_position(next_x, next_y)
             next_validation_result["position"] = (next_x, next_y, self.facing, self.move_count)
             if next_validation_result.get("success"):
-                blocked_robot_info = self.table.get_robot_by_position(new_x, new_y)
+                blocked_robot = self.table.get_robot_by_position(new_x, new_y)
 
-                if blocked_robot_info:
-                    uuid = blocked_robot_info[0]
-                    blocked_robot = self.table.get_robot_by_id(uuid)
+                if blocked_robot:
                     blocked_robot.append_history()
                     blocked_robot.move_to(next_x, next_y)
 

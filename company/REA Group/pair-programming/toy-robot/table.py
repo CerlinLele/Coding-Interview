@@ -35,15 +35,17 @@ class Table:
 
     def get_robot_by_position(self, x, y):
         """Get the robot grid by x and y."""
-        return self.robots[x][y]
+        if self.robots[x][y] is None:
+            return None
+        uuid, name = self.robots[x][y]
+        return self.get_robot_by_id(uuid)
 
     def get_robot_position(self, uuid):
-        """Get the position of a robot tracked on this table by uuid."""
-        robot = self.robot_registry.get(uuid)
+        """Get the position of a robot by uuid."""
+        robot = self.get_robot_by_id(uuid)
         if robot is None:
             return None
-        
-        return f"{robot.x},{robot.y},{robot.facing},{robot.move_count}"
+        return f"{robot.x},{robot.y},{robot.facing},{robot.move_count}" 
 
     def is_valid_position(self, x, y):
         """
@@ -66,9 +68,9 @@ class Table:
             reason = "obstacle"
         # check if the position is occupied by another robot
         elif self.get_robot_by_position(x, y) is not None:
-            robot_info = self.get_robot_by_position(x, y)
-            collision_with = str(robot_info[0])  # robot UUID
-            message = f"The position is occupied by another robot: {robot_info}."
+            robot = self.get_robot_by_position(x, y)
+            collision_with = str(robot.id)  # robot UUID
+            message = f"The position is occupied by another robot: {robot.name}."
             reason = "collision"
         # if the position is valid, return success and message
         else:
