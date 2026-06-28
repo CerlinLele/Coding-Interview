@@ -443,3 +443,20 @@ class TestMultiRobot:
         result = robot2.execute("REPORT")
         assert result == '0,2,NORTH,1'
 
+    def test_robot_pushing_blocked_by_obstacle(self):
+        """Push fails when the target robot is blocked by an obstacle."""
+        obstacles = [(0, 2)]
+        table = Table(5, 5, obstacles)
+        robot1 = Robot(table, "Robot A")
+        robot2 = Robot(table, "Robot B")
+        robot1.execute("PLACE 0,0,NORTH")
+        robot2.execute("PLACE 0,1,NORTH")
+        # Robot A tries to push Robot B, but B is blocked by obstacle at (0,2)
+        result = robot1.execute("PUSH 1")
+        assert result.get("success") == False
+        # Both robots should stay in place
+        result = robot1.execute("REPORT")
+        assert result == '0,0,NORTH,0'
+        result = robot2.execute("REPORT")
+        assert result == '0,1,NORTH,0'
+
