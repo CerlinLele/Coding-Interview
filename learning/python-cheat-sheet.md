@@ -131,6 +131,11 @@ delta = deltas.get('UNKNOWN', (0, 0))  # (0, 0)
 if 'NORTH' in deltas:
     print("存在")
 
+# 删除键值对
+del deltas['NORTH']         # 键不存在会抛出 KeyError
+deltas.pop('EAST')          # 删除并返回值，键不存在抛出 KeyError
+deltas.pop('SOUTH', None)   # 安全方式，键不存在返回 None
+
 # 获取所有键/值
 deltas.keys()
 deltas.values()
