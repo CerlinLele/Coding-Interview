@@ -431,3 +431,15 @@ class TestMultiRobot:
         result = robot1.report()
         assert result == '0,0,NORTH,0'
 
+    def test_robot_pushing(self):
+        table = Table(5, 5)
+        robot1 = Robot(table, "Robot A")
+        robot2 = Robot(table, "Robot B")
+        robot1.execute("PLACE 0,0,NORTH")
+        robot2.execute("PLACE 0,1,NORTH")
+        robot1.execute("PUSH 1")
+        result = robot1.execute("REPORT")
+        assert result == '0,1,NORTH,1'
+        result = robot2.execute("REPORT")
+        assert result == '0,2,NORTH,1'
+

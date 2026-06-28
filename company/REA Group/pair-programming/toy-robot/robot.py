@@ -132,6 +132,54 @@ class Robot:
             "message": f"Jump {steps} steps successfully",
             "position": (self.x, self.y, self.facing, self.move_count)
         }   
+
+    def push(self, steps=1):
+        """Push the robot forward N steps. Stop if blocked by boundary, obstacle, or robot."""
+        if not self.is_placed():
+            return {"success": False, "message": "Robot is not placed on the table."}
+
+        # Currently we only support pushing one step
+        if steps != 1:
+            return {"success": False, "message": "Currently we only support pushing one step."}
+
+        # Push the robot forward N steps. Stop if blocked by boundary, obstacle, or robot.
+        start_x, start_y, start_facing, start_move_count = self.x, self.y, self.facing, self.move_count
+        dx, dy = self.DIRECTION_DELTAS[start_facing]
+
+        # Currently we only support pushing one step
+
+        new_x = start_x + dx
+        new_y = start_y + dy
+
+        validation_result = self.table.is_valid_position(new_x, new_y)
+
+        if validation_result.get("success"):
+            return {
+                "success": False,
+                "message": "There is nothing to push.",
+                "position": (self.x, self.y, self.facing, self.move_count)
+            }
+
+        if validation_result.get("reason") == "boundary":
+            validation_result["message"] = "Pushed to the boundary."
+            validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
+            return validation_result
+
+        if validation_result.get("reason") == "obstacle":
+            validation_result["message"] = "Pushed to the obstacle."
+            validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
+            return validation_result
+
+        if validation_result.get("reason") == "robot":
+            next_x = new_x + dx
+            next_y = new_y + dy
+            next_validation_result = self.table.is_valid_position(next_x, next_y)
+            next_validation_result["position"] = (next_x, next_y, self.facing, self.move_count)
+            if next_validation_result.get("success"):
+                # pending: moving logic here
+                next_validation_result["message"] = "Pushed to the robot successfully."
+                
+            return next_validation_result
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
@@ -216,6 +264,16 @@ class Robot:
                 facing = coords_and_facing[2]
 
                 return self.place(x, y, facing)
+            except (ValueError, IndexError):
+                return None
+
+        elif command.startswith('PUSH'):
+            parts = command.split()
+            if len(parts) != 2:
+                return self.push(1)
+            try:
+                steps = int(parts[1])
+                return self.push(steps)
             except (ValueError, IndexError):
                 return None
 
