@@ -1,6 +1,13 @@
+
+# 
+
 # **Multiple robots**
 
-# Jump
+## Undo
+
+undo() also need to check collision. Because there are multiple robots on the table. So the previous position maybe occupied.
+
+## Jump
 
 ```
 robot1 = Robot(table, "Robot A")
@@ -47,11 +54,11 @@ Refactored in other executions also.
 2. For the calculation of `move_count` , I may choose atomic operation instead of all or nothing. Because previously we decided that we can reach to the fareast as we can. So it actually **moved**. If we choose all-or-nothing, it seems like we stay at the start point.\
    Now we also need to save `move_count` into the history for `undo()` . Because undo may not just decrease move_count by 1 this time.
 
-# Storage
+## Storage
 
-## Multiple robots can coexist on the table
+### Multiple robots can coexist on the table
 
-### 2D Array
+#### 2D Array
 
 I will choose 2d array to store the positions of multiple robots.
 
@@ -110,7 +117,7 @@ I will choose 2d array to store the positions of multiple robots.
 
   This keeps the design simple: one source of truth, two caches for performance.
 
-# Collision detection/handling
+## Collision detection/handling
 
 - They can't occupy the same cell → They need collision detection/handling
 
@@ -180,7 +187,7 @@ result = robot1.execute("PUSH 1")
 # {"success": False, "message": "Cannot push: Robot B blocked by wall", ...}
 ```
 
-`undo()` after push: 
+`undo()` after push:
 
 ```python
 robot_a.execute("PLACE 0,0,NORTH")
@@ -196,18 +203,18 @@ robot_a.execute("UNDO")
   - When we undo a, we will know that we have affected b previously. So we also need to undo b
 - Result: Both return to pre-PUSH state ✓ Consistent
 
-# Robot
+## Robot
 
 - Consider how robots are created, managed, and identified
 
-## ID
+### ID
 
 Each robot needs:
 
 - **uuid**: unique identifier (no need for incremental numbers)
 - **name**: human-readable label
 
-## Init
+### Init
 
 **Should the Table manage robot creation and lifecycle?**
 
@@ -237,13 +244,13 @@ all_robots = table.get_all_robots()
 
 For a larger system (e.g., multi-table simulation), Option B would make sense.
 
-### Robot Registry
+#### Robot Registry
 
 `Table.robot_registry = {uuid: Robot}`
 
 Currently I will add this registry with robot. When a robot is placed on a table, it will be registered with this table. So that the table can track the whole `Robot` object.
 
-## Manage
+### Manage
 
 **Grid update on every action:**
 
