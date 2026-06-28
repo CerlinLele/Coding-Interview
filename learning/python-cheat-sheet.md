@@ -556,6 +556,16 @@ self.append_history(1, 2, affected_robots=[uuid])
 self.append_history(affected_robots=[uuid], 1, 2)  # SyntaxError
 ```
 
+**用 `*` 强制某些参数必须用关键字传入**
+```python
+# * 后面的参数必须用关键字，不能用位置参数
+def func(a=1, b=2, *, c=3, d=4):
+    pass
+
+func(10, 20, c=30, d=40)  # ✅ 对 - c、d 必须用关键字
+func(10, 20, 30, 40)      # ❌ 错 - c、d 不能用位置参数
+```
+
 ---
 
 ## 异常处理
