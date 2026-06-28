@@ -522,6 +522,38 @@ def get_position():
     return self.x, self.y
 
 x, y = get_position()
+
+# 所有参数都有默认值 - 可以任意组合传入
+def append_history(self, x=None, y=None, facing=None, move_count=None, affected_robots=None):
+    if x is None:
+        x = self.x
+    if y is None:
+        y = self.y
+    if facing is None:
+        facing = self.facing
+    if move_count is None:
+        move_count = self.move_count
+    if affected_robots is None:
+        affected_robots = []
+    self.history.append((x, y, facing, move_count, affected_robots))
+
+# 调用方式 - 位置参数按顺序匹配，关键字参数按名字指定
+self.append_history()  # 都用默认值
+self.append_history(affected_robots=[uuid])  # 只指定 affected_robots
+self.append_history(1, 2)  # 按位置传 x, y
+self.append_history(1, 2, 'NORTH', 5)  # 按位置传 x, y, facing, move_count
+self.append_history(1, 2, 'NORTH', 5, [uuid])  # 全部按位置传
+self.append_history(facing='NORTH', x=1)  # 关键字参数可乱序
+self.append_history(1, 2, facing='NORTH')  # 混合：位置 + 关键字（位置必须在前）
+```
+
+**规则：位置参数必须在关键字参数之前**
+```python
+# ✅ 对
+self.append_history(1, 2, affected_robots=[uuid])
+
+# ❌ 错
+self.append_history(affected_robots=[uuid], 1, 2)  # SyntaxError
 ```
 
 ---
