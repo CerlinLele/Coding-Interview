@@ -59,7 +59,6 @@ class Robot:
 
         self.table.update_robot_grid(self.id, self.name, x, y)
         self.table.register_robot(self.id, self)
-        self.table.update_robot_position(self.id, (x, y, facing, self.move_count))
 
         return {
             "success": True, 
@@ -86,14 +85,12 @@ class Robot:
             self.append_history()
 
             self.table.update_robot_grid(None, None, self.x, self.y)
-            self.table.update_robot_position(self.id, None)
 
             self.x = new_x
             self.y = new_y
             self.move_count += 1
 
             self.table.update_robot_grid(self.id, self.name, new_x, new_y)
-            self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
 
         validation_result["message"] = f"Moved {direction} successfully"
         validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
@@ -131,7 +128,6 @@ class Robot:
 
             # 3. Update the grid if you actually move
             self.table.update_robot_grid(None, None, self.x, self.y)
-            self.table.update_robot_position(self.id, None)
 
             self.x = new_x
             self.y = new_y
@@ -139,7 +135,6 @@ class Robot:
             self.move_count += 1
 
             self.table.update_robot_grid(self.id, self.name, new_x, new_y)
-            self.table.update_robot_position(self.id, (new_x, new_y, self.facing, self.move_count))
 
         # 5. Return consistent format
         return {
@@ -198,27 +193,23 @@ class Robot:
                     blocked_robot = self.table.get_robot_by_id(uuid)
                     blocked_robot.append_history()
                     blocked_robot.table.update_robot_grid(None, None, blocked_robot.x, blocked_robot.y)
-                    blocked_robot.table.update_robot_position(blocked_robot.id, None)
 
                     blocked_robot.x = next_x
                     blocked_robot.y = next_y
                     blocked_robot.move_count += 1
 
                     blocked_robot.table.update_robot_grid(blocked_robot.id, blocked_robot.name, blocked_robot.x, blocked_robot.y)
-                    blocked_robot.table.update_robot_position(blocked_robot.id, (blocked_robot.x, blocked_robot.y, blocked_robot.facing, blocked_robot.move_count))
 
                 affected_robots = [blocked_robot.id]
                 self.append_history(affected_robots=affected_robots)
 
                 self.table.update_robot_grid(None, None, self.x, self.y)
-                self.table.update_robot_position(self.id, None)
 
                 self.x = new_x
                 self.y = new_y
                 self.move_count += 1
 
                 self.table.update_robot_grid(self.id, self.name, self.x, self.y)
-                self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
 
                 next_validation_result["message"] = "Pushed to the robot successfully."
                 next_validation_result["position"] = blocked_robot.report()
@@ -270,7 +261,6 @@ class Robot:
                 return {"success": False, "message": "No moves to undo."}
 
         self.table.update_robot_grid(None, None, self.x, self.y)
-        self.table.update_robot_position(self.id, None)
 
         self.x, self.y, self.facing, self.move_count, affected_robots = current_state
 
@@ -280,15 +270,12 @@ class Robot:
             affected_state = robot.history.pop()
             
             robot.table.update_robot_grid(None, None, robot.x, robot.y)
-            robot.table.update_robot_position(robot.id, None)
 
             robot.x, robot.y, robot.facing, robot.move_count = affected_state[:4]
 
             robot.table.update_robot_grid(robot.id, robot.name, robot.x, robot.y)
-            robot.table.update_robot_position(robot.id, (robot.x, robot.y, robot.facing, robot.move_count))
 
         self.table.update_robot_grid(self.id, self.name, self.x, self.y)
-        self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
         
         return {
             "success": True, 
