@@ -26,6 +26,18 @@ class Robot:
         """Check if the robot has been placed on the table."""
         return self.x is not None and self.y is not None and self.facing is not None
 
+    def append_history(self, x=None, y=None, facing=None, move_count=None):
+        """Append a history entry."""
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+        if facing is None:
+            facing = self.facing
+        if move_count is None:
+            move_count = self.move_count
+        self.history.append((x, y, facing, move_count))
+
     def place(self, x, y, facing):
         """Place the robot at position (x, y) facing a direction.
 
@@ -171,16 +183,43 @@ class Robot:
             validation_result["position"] = (self.x, self.y, self.facing, self.move_count)
             return validation_result
 
-        if validation_result.get("reason") == "robot":
+        if validation_result.get("reason") == "collision":
             next_x = new_x + dx
             next_y = new_y + dy
             next_validation_result = self.table.is_valid_position(next_x, next_y)
             next_validation_result["position"] = (next_x, next_y, self.facing, self.move_count)
             if next_validation_result.get("success"):
-                # pending: moving logic here
+                blocked_robot_info = self.table.get_robot_by_position(new_x, new_y)
+
+                if blocked_robot_info:
+                    uuid = blocked_robot_info[0]
+                    blocked_robot = self.table.get_robot_by_id(uuid)
+                    blocked_robot.append_history()
+                    blocked_robot.table.update_robot_grid(None, None, blocked_robot.x, blocked_robot.y)
+                    blocked_robot.table.update_robot_position(blocked_robot.id, None)
+
+                    blocked_robot.x = next_x
+                    blocked_robot.y = next_y
+                    blocked_robot.move_count += 1
+
+                    blocked_robot.table.update_robot_grid(blocked_robot.id, blocked_robot.name, blocked_robot.x, blocked_robot.y)
+                    blocked_robot.table.update_robot_position(blocked_robot.id, (blocked_robot.x, blocked_robot.y, blocked_robot.facing, blocked_robot.move_count))
+
+                self.table.update_robot_grid(None, None, self.x, self.y)
+                self.table.update_robot_position(self.id, None)
+
+                self.x = new_x
+                self.y = new_y
+                self.move_count += 1
+
+                self.table.update_robot_grid(self.id, self.name, self.x, self.y)
+                self.table.update_robot_position(self.id, (self.x, self.y, self.facing, self.move_count))
+
                 next_validation_result["message"] = "Pushed to the robot successfully."
-                
-            return next_validation_result
+                next_validation_result["position"] = blocked_robot.report()
+                return next_validation_result
+            else:
+                return next_validation_result
     
     def left(self):
         """Rotate the robot 90 degrees to the left."""
